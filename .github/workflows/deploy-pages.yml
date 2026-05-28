@@ -3,8 +3,7 @@ name: Deploy DevOps Learn to GitHub Pages
 on:
   push:
     branches: [master]
-    paths:
-      - "devops-learn/**"
+
   workflow_dispatch:
 
 permissions:
@@ -56,4 +55,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
 
