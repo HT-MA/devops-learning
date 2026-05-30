@@ -413,6 +413,24 @@ False. A single Pod can run on a single node.
 
 <details>
 <summary>You run a pod and you see the status <code>ContainerCreating</code></summary><br><b>
+
+The `ContainerCreating` status means the Pod has been scheduled to a node, but the container runtime hasn't started all containers yet. Common causes:
+
+1. **Image pull** — The container image is being pulled (large image or slow registry)
+2. **Volume mounting** — A PersistentVolume is being attached/provisioned
+3. **Init containers** — Init containers are still running
+4. **Container runtime delay** — CRI (containerd/CRI-O) is starting the container
+
+**Debugging:**
+```bash
+kubectl describe pod <pod-name>   # Check Events section for pull/volume errors
+kubectl get events --field-selector involvedObject.name=<pod-name>
+```
+
+**Common issues:**
+- ImagePullBackOff: wrong image name, registry auth, network
+- PVC Pending: no matching PV, storage class issues
+- CrashLoopBackOff after ContainerCreating: container starts but immediately exits
 </b></details>
 
 <details>
@@ -818,6 +836,24 @@ Using a Service.
 
 <details>
 <summary>Can you use a Deployment for stateful applications?</summary><br><b>
+
+Technically yes, but it's **not recommended** for most stateful workloads. Deployments assume all Pods are identical and interchangeable — which often doesn't hold for stateful apps.
+
+**Why Deployments are problematic for stateful apps:**
+- All Pods share the same PVC template — each Pod gets a separate volume, but they're indistinguishably named (random suffix)
+- No stable network identity — Pod names are `<deployment>-<random-hash>`, making peer discovery difficult for clustered databases
+- No ordered scaling/updates — Deployment scales up/down all at once, which can corrupt clustered databases (e.g., Cassandra, Kafka)
+- Rolling updates may break quorum in clustered stateful apps
+
+**Use StatefulSet instead:**
+| Feature | Deployment | StatefulSet |
+|---------|-----------|-------------|
+| Pod identity | Random hash | Predictable ordinal (`pod-0`, `pod-1`, ...) |
+| PVC management | One PVC template for all Pods | Each Pod gets its own PVC (volumeClaimTemplate) |
+| Scaling | All pods created/destroyed simultaneously | Sequential (0→1→2, or 2→1→0) |
+| Network identity | Random | Stable (`pod-0.service.namespace.svc.cluster.local`) |
+
+**When Deployment IS acceptable:** Single-instance stateful apps (one replica with a PV) where you don't need clustering. Example: a single Postgres instance for a dev environment.
 </b></details>
 
 <details>
@@ -1971,10 +2007,67 @@ kubectl run nginx --image=nginx --restart=Never --port 80 --expose
 
 <details>
 <summary>Describe in detail what the following command does <code>kubectl create deployment kubernetes-httpd --image=httpd</code></summary><br><b>
+
+This is an imperative command that creates a Deployment named `kubernetes-httpd` using the Apache HTTPD (`httpd`) container image. Here's what happens step by step:
+
+1. **kubectl** sends a request to the API server to create a Deployment resource
+2. The **API server** validates the request and persists it to etcd
+3. The **Deployment controller** detects the new Deployment and creates a ReplicaSet
+4. The **ReplicaSet controller** detects the new ReplicaSet and creates a Pod
+5. The **Scheduler** assigns the Pod to a suitable node
+6. The **kubelet** on that node instructs the container runtime to pull the `httpd` image and start the container
+
+**Defaults applied (since not specified):**
+- Replicas: 1 (default when not specified)
+- Container port: none exposed by default
+- Restart policy: Always (inherited from Deployment)
+- Update strategy: RollingUpdate with 25% maxSurge and 25% maxUnavailable
+
+**Equivalent declarative YAML:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-httpd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubernetes-httpd
+  template:
+    metadata:
+      labels:
+        app: kubernetes-httpd
+    spec:
+      containers:
+      - name: httpd
+        image: httpd
+```
+
+**Note:** This creates a running Apache server, but it's not accessible from outside the cluster yet — you'd need a Service (NodePort/LoadBalancer) or Ingress to expose it.
 </b></details>
 
 <details>
 <summary>Why to create kind deployment, if pods can be launched with replicaset?</summary><br><b>
+
+Because Deployments provide **above and beyond** what a plain ReplicaSet offers. A ReplicaSet only ensures a specified number of Pod replicas are running — that's it.
+
+**What Deployments add on top of ReplicaSets:**
+
+| Capability | Deployment | ReplicaSet |
+|-----------|------------|------------|
+| Rolling updates | ✅ Gradual pod replacement | ❌ Must manually delete/recreate |
+| Rollback | ✅ `kubectl rollout undo` | ❌ No history |
+| Update strategy | ✅ RollingUpdate, Recreate | ❌ None |
+| Version history | ✅ Keeps revision history (default 10) | ❌ None |
+| Pause/Resume | ✅ `kubectl rollout pause` | ❌ None |
+| Scaling | ✅ Declarative | ✅ Declarative |
+
+**Real-world analogy:**
+- ReplicaSet = "keep 3 identical pods running"
+- Deployment = "keep 3 identical pods running, but also manage how we transition from v1.2 to v1.3, keep a history so we can undo, and let me control the rollout speed"
+
+**You should always use Deployments** for stateless workloads. The ReplicaSet is an internal implementation detail — Kubernetes creates one automatically when you create a Deployment. You rarely create ReplicaSets directly.
 </b></details>
 
 <details>
@@ -2015,6 +2108,43 @@ They become candidates to for termination.
 
 <details>
 <summary>Describe how roll-back works</summary><br><b>
+
+Rollback reverts a Deployment to a previous revision. Kubernetes keeps a revision history (default: 10 revisions) of the Deployment's Pod template.
+
+**How it works:**
+1. Each time you update a Deployment (change image, env vars, etc.), Kubernetes creates a new ReplicaSet and records the revision
+2. The old ReplicaSet(s) are scaled down but NOT deleted — they serve as rollback targets
+3. A rollback simply scales up an old ReplicaSet and scales down the current one
+
+**Commands:**
+```bash
+# View rollout history
+kubectl rollout history deployment/myapp
+
+# View details of a specific revision
+kubectl rollout history deployment/myapp --revision=3
+
+# Rollback to the previous revision
+kubectl rollout undo deployment/myapp
+
+# Rollback to a specific revision
+kubectl rollout undo deployment/myapp --to-revision=2
+
+# Watch rollout status
+kubectl rollout status deployment/myapp
+
+# Check which ReplicaSets belong to a Deployment
+kubectl get rs -l app=myapp
+```
+
+**What gets rolled back:** Only the Pod template (`spec.template`). Rollback does NOT affect:
+- Number of replicas (unchanged from current)
+- Deployment strategy (unchanged from current)
+- Labels/annotations on the Deployment itself
+
+**Under the hood:** Kubernetes just changes the Deployment's Pod template to match the old one and scales the old ReplicaSet back up. It's essentially a reverse rolling update.
+
+**Limitation:** Rollback only works if the old ReplicaSet still exists. If you deleted it or exceeded `revisionHistoryLimit`, rollback is not possible — you'd need to redeploy from your Git/manifest source.
 </b></details>
 
 <details>
@@ -2078,6 +2208,27 @@ True
 <details>
 <summary>Explain what is the OLM (Operator Lifecycle Manager) and what is it used for</summary><br><b>
 
+The Operator Lifecycle Manager (OLM) is a component of the Operator Framework that manages the full lifecycle of Kubernetes Operators — from installation to upgrades to removal. It extends Kubernetes with declarative Operator management.
+
+**What OLM does:**
+1. **Installation** — Resolves dependencies and installs Operators from catalogs (like OperatorHub)
+2. **Updates** — Manages Operator upgrades (manual or automatic approval strategies)
+3. **Dependency management** — Ensures required CRDs and APIs exist before installing an Operator
+4. **RBAC** — Automatically manages permissions needed by Operators
+
+**Key resources OLM introduces:**
+- `ClusterServiceVersion` (CSV) — Defines all metadata for an Operator (version, icon, required CRDs, permissions, install strategy)
+- `Subscription` — Keeps an Operator up-to-date by watching a catalog for new versions
+- `InstallPlan` — The computed plan for installing/upgrading an Operator (can require manual approval)
+- `OperatorGroup` — Defines which namespaces an Operator can watch
+- `CatalogSource` — A registry of Operators (e.g., Red Hat's OperatorHub, or a custom catalog)
+
+**Why OLM matters:**
+- Without OLM, Operators are installed via raw YAML/Helm with no lifecycle management
+- OLM provides consistent upgrade paths, dependency resolution, and governance
+- Core component of OpenShift 4 and usable on vanilla Kubernetes
+
+Read more: [OLM Architecture](https://olm.operatorframework.io/docs/)
 </b></details>
 
 <details>
@@ -2252,6 +2403,45 @@ True
 
 <details>
 <summary>What is PersistentVolumeClaim?</summary><br><b>
+
+A PersistentVolumeClaim (PVC) is a **request for storage** by a user. Think of it as a "storage ticket" — you request specific size and access mode, and Kubernetes binds it to a matching PersistentVolume (PV).
+
+**Relationship:** PV is the provisioned storage (like a pre-created disk). PVC is the request for that storage.
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+```
+
+**Using PVC in a Pod:**
+```yaml
+spec:
+  containers:
+  - name: app
+    image: nginx
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: my-pvc
+```
+
+**Lifecycle:**
+1. **Provisioning** — Static: admin creates PV; Dynamic: StorageClass auto-creates PV
+2. **Binding** — PVC matched to PV (based on size, access mode, storage class)
+3. **Using** — Pod mounts PVC as a volume
+4. **Reclaiming** — PVC deleted → PV reclaimed per Reclaim Policy (Retain/Delete/Recycle)
 </b></details>
 
 <details>
@@ -2268,6 +2458,51 @@ False
 
 <details>
 <summary>Explain Storage Classes</summary><br><b>
+
+StorageClass provides a way to describe the "classes" of storage available in a cluster — enabling **dynamic provisioning** of PersistentVolumes. Instead of an admin pre-creating PVs, Kubernetes creates PVs automatically when a PVC requests a StorageClass.
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+provisioner: kubernetes.io/aws-ebs   # or: kubernetes.io/gce-pd, csi-driver
+parameters:
+  type: gp3           # AWS EBS gp3
+  iopsPerGB: "10"
+  encrypted: "true"
+reclaimPolicy: Delete    # Delete PV when PVC is deleted
+volumeBindingMode: WaitForFirstConsumer   # Wait until pod scheduled
+allowVolumeExpansion: true
+```
+
+**Key parameters:**
+| Field | Purpose |
+|-------|---------|
+| `provisioner` | Determines which volume plugin creates the PV (cloud-specific or CSI) |
+| `reclaimPolicy` | What happens to PV after PVC deletion: `Delete` (default), `Retain` |
+| `volumeBindingMode` | `Immediate` (bind PVC immediately) or `WaitForFirstConsumer` (wait until Pod scheduled — improves topology-aware scheduling) |
+| `allowVolumeExpansion` | Allow PVC to be resized after creation |
+
+**Common cloud provisioners:**
+- AWS: `kubernetes.io/aws-ebs` (gp3, gp2, io2)
+- GCP: `kubernetes.io/gce-pd`
+- Azure: `kubernetes.io/azure-disk`, `kubernetes.io/azure-file`
+- CSI: `ebs.csi.aws.com`, `pd.csi.storage.gke.io`
+
+**Usage:**
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pvc
+spec:
+  storageClassName: fast-ssd    # References the StorageClass above
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 50Gi
+```
 </b></details>
 
 <details>
@@ -2278,30 +2513,145 @@ The main difference relies on the moment when you want to configure storage. For
 
 <details>
 <summary>Explain Access Modes</summary><br><b>
+
+Access Modes define how a PersistentVolume can be mounted by Pods. Kubernetes supports four access modes:
+
+| Access Mode | Abbreviation | Description |
+|-------------|--------------|-------------|
+| `ReadWriteOnce` | RWO | Volume can be mounted as read-write by a **single node**. Multiple pods on the same node can still access it. |
+| `ReadOnlyMany` | ROX | Volume can be mounted as read-only by **many nodes**. |
+| `ReadWriteMany` | RWX | Volume can be mounted as read-write by **many nodes**. Requires network/distributed filesystem (NFS, CephFS, GlusterFS). |
+| `ReadWriteOncePod` | RWOP | Volume can be mounted as read-write by a **single Pod** only. (Kubernetes 1.22+, CSI only) |
+
+**Important:** Access modes are about **node** concurrency, not pod concurrency. RWO means one node can mount read-write — many pods on that same node can use it.
+
+**Which storage supports which modes:**
+| Storage Type | RWO | ROX | RWX |
+|-------------|-----|-----|-----|
+| AWS EBS | ✅ | ❌ | ❌ |
+| GCE Persistent Disk | ✅ | ✅ (read-only) | ❌ |
+| Azure Disk | ✅ | ❌ | ❌ |
+| Azure Files | ✅ | ✅ | ✅ |
+| NFS | ✅ | ✅ | ✅ |
+| CephFS | ✅ | ✅ | ✅ |
+
+**Example:**
+```yaml
+spec:
+  accessModes:
+    - ReadWriteOnce
+```
 </b></details>
 
 <details>
 <summary>What is CSI Volume Cloning?</summary><br><b>
+
+CSI Volume Cloning creates an exact duplicate of an existing PersistentVolumeClaim using the Container Storage Interface (CSI). The new PVC is a point-in-time copy of the source PVC's data — useful for testing, backups, and data replication.
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cloned-pvc
+spec:
+  storageClassName: fast-ssd
+  dataSource:
+    name: original-pvc       # Source PVC to clone
+    kind: PersistentVolumeClaim
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi          # Must be >= source PVC size
+```
+
+**Requirements:**
+- CSI driver must support cloning (`SUPPORTS_VOLUME_CLONE` capability)
+- Source and clone must be in the same namespace
+- StorageClass must be the same (or compatible)
+- The source PVC must NOT be in use (bound and unused)
 </b></details>
 
 <details>
 <summary>Explain "Ephemeral Volumes"</summary><br><b>
+
+Ephemeral volumes exist only for the lifetime of a Pod — they're created when the Pod starts and destroyed when the Pod is deleted. Unlike PersistentVolumes, they don't survive Pod restarts or rescheduling.
+
+**Types of ephemeral storage in Kubernetes:**
+
+1. **emptyDir** — Created when Pod is assigned to a node. Survives container restarts but deleted on Pod deletion. Stored on node's disk or memory.
+   ```yaml
+   volumes:
+   - name: cache
+     emptyDir:
+       medium: Memory    # RAM-backed (tmpfs), fast but limited
+       sizeLimit: 1Gi
+   ```
+
+2. **Generic Ephemeral Volumes** (K8s 1.23+) — CSI volumes that behave like ephemeral storage. Created with the Pod, destroyed with the Pod.
+   ```yaml
+   volumes:
+   - name: scratch
+     ephemeral:
+       volumeClaimTemplate:
+         spec:
+           accessModes: [ReadWriteOnce]
+           resources:
+             requests:
+               storage: 10Gi
+   ```
+
+**Use cases:**
+- Temporary scratch space for processing
+- Cache directories
+- Sharing data between containers in a Pod (via emptyDir)
+- Testing with temporary databases
 </b></details>
 
 <details>
 <summary>What types of ephemeral volumes Kubernetes supports?</summary><br><b>
+
+Kubernetes supports these ephemeral (temporary) volume types:
+
+1. **emptyDir** — Simplest: node-local storage, deleted on Pod deletion. Can use `medium: Memory` for RAM-backed storage.
+
+2. **Generic Ephemeral Volumes** — CSI-provided volumes with a Pod lifetime (K8s 1.23+). Behaves like a PVC but deleted with the Pod.
+
+3. **ConfigMap / Secret** — Injected as files into Pods. Read-only by nature. Updated dynamically.
+
+4. **Downward API** — Expose Pod metadata (name, namespace, labels, annotations) as files.
+
+5. **CSI Ephemeral Inline Volumes** — Similar to generic ephemeral but defined inline in the Pod spec (older approach).
+
+**Comparison:**
+| Type | Lifetime | Persistence | Use Case |
+|------|----------|-------------|----------|
+| emptyDir | Pod | None | Scratch space, cache |
+| Generic Ephemeral | Pod | None | Temporary CSI storage |
+| ConfigMap/Secret | Pod (as mounted) | ConfigMap/Secret persists | Config injection |
+| Downward API | Pod | None | Pod metadata injection |
 </b></details>
 
 <details>
 <summary>What is Reclaim Policy?</summary><br><b>
+
+Reclaim Policy determines what happens to a PersistentVolume (PV) after its bound PVC is deleted.
+
+| Policy | Behavior | Use Case |
+|--------|----------|----------|
+| `Retain` | PV and data preserved. PV enters "Released" state — requires manual cleanup before reuse. | Production data needing manual backup/verification |
+| `Delete` | PV AND associated cloud storage (EBS, GCE disk, Azure disk) deleted automatically. | Dynamic provisioning, dev/test |
+| `Recycle` | **Deprecated.** Scrubs volume and makes available again. Not supported by most plugins. | Legacy only |
+
+Best practice: Use `Delete` with dynamic provisioning; `Retain` for critical data.
 </b></details>
 
 <details>
 <summary>What reclaim policies are there?</summary><br><b>
 
-* Retain
-* Recycle
-* Delete
+* **Retain** — PV and underlying storage are preserved. Must be manually cleaned up and re-used.
+* **Recycle** — **(Deprecated)** Performs basic scrub (`rm -rf /thevolume/*`) and makes the PV available for new claims.
+* **Delete** — PV and associated cloud storage asset are deleted automatically (default for dynamically provisioned volumes).
 </b></details>
 
 ### Access Control
@@ -2313,7 +2663,46 @@ RBAC in Kubernetes is the mechanism that enables you to configure fine-grained a
 </b></details>
 
 <details>
-<summary>Explain the <code>Role</code> and <code>RoleBinding"</code> objects</summary><br><b>
+<summary>Explain the <code>Role</code> and <code>RoleBinding</code> objects</summary><br><b>
+
+RBAC resources that control access within a namespace.
+
+**Role** — Defines WHAT you can do:
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+```
+
+**RoleBinding** — Defines WHO gets the permissions:
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: default
+  name: read-pods
+subjects:
+- kind: User
+  name: alice
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+```
+
+**Scope comparison:**
+| | Role + RoleBinding | ClusterRole + ClusterRoleBinding |
+|---|---|---|
+| Scope | Namespace only | Cluster-wide (all namespaces + cluster-scoped resources like nodes, PVs) |
+
+Common pattern: define a ClusterRole once, then use RoleBindings in multiple namespaces to grant the same permissions in each namespace.
 </b></details>
 
 <details>
@@ -2425,10 +2814,71 @@ To fix it, these lines should placed in the spec of the cron job, above or under
 <details>
 <summary>Explain Imperative Management vs. Declarative Management</summary><br><b>
 
+| | Imperative | Declarative |
+|---|---|---|
+| **How it works** | Tell Kubernetes **HOW** to do something (specific steps) | Tell Kubernetes **WHAT** you want (desired state) |
+| **Commands** | `kubectl run`, `kubectl create`, `kubectl expose`, `kubectl scale` | `kubectl apply -f manifest.yaml` |
+| **State management** | You manage state manually | Kubernetes reconciles actual → desired state |
+| **History** | No change history | Files in version control (Git) |
+| **Best for** | Quick experiments, debugging | Production, CI/CD, GitOps |
+
+**Imperative example:**
+```bash
+kubectl run nginx --image=nginx --replicas=3
+kubectl scale deployment nginx --replicas=5
+```
+
+**Declarative example:**
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  replicas: 5
+  template:
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+```
+```bash
+kubectl apply -f deployment.yaml
+```
+
+**Best practice:** Use declarative management for production. Imperative is fine for quick debugging but doesn't scale across teams and environments.
 </b></details>
 
 <details>
 <summary>Explain what Kubernetes Service Discovery means</summary><br><b>
+
+Service Discovery is how Kubernetes components find and communicate with each other without hardcoded IP addresses (since Pod IPs are ephemeral).
+
+**Two mechanisms:**
+
+**1. DNS-based** (primary — CoreDNS):
+Every Service gets a DNS record:
+```
+<service-name>.<namespace>.svc.cluster.local
+```
+Example: `database-service.default.svc.cluster.local` resolves to the Service's ClusterIP, which load balances to healthy Pods.
+
+Headless Services (`clusterIP: None`) return Pod IPs directly — used by StatefulSets where each Pod needs its own DNS:
+```
+<pod-name>.<headless-service>.<namespace>.svc.cluster.local
+```
+
+**2. Environment Variables:**
+At Pod startup, kubelet injects env vars for every Service:
+```
+REDIS_SERVICE_HOST=10.96.0.1
+REDIS_SERVICE_PORT=6379
+```
+Less commonly used — DNS is preferred (env vars don't update if Services change after Pod starts).
+
+**How it works:**
+```
+Pod A → DNS query for "backend-svc" → CoreDNS → ClusterIP → kube-proxy (iptables/IPVS) → backend Pod
+```
 </b></details>
 
 <details>
@@ -2444,6 +2894,45 @@ Namespaces will allow to limit resources and also make sure there are no collisi
 
 <details>
 <summary>What "Resources Quotas" are used for and how?</summary><br><b>
+
+ResourceQuotas limit the total resource consumption within a namespace — preventing one team/project from consuming all cluster resources.
+
+**What ResourceQuotas can limit:**
+| Category | Examples |
+|----------|----------|
+| Compute | Total CPU, memory across all Pods in the namespace |
+| Storage | Total storage requested, number of PVCs |
+| Object count | Max number of Pods, Services, ConfigMaps, Secrets, Deployments, etc. |
+
+**Example:**
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: team-a-quota
+  namespace: team-a
+spec:
+  hard:
+    requests.cpu: "10"        # Max 10 CPU cores requested across all pods
+    requests.memory: "20Gi"   # Max 20Gi memory requested
+    limits.cpu: "20"          # Max 20 CPU limits
+    limits.memory: "40Gi"     # Max 40Gi memory limits
+    pods: "20"                # Max 20 pods
+    services: "10"            # Max 10 services
+    persistentvolumeclaims: "5"
+    configmaps: "20"
+    secrets: "20"
+```
+
+**Important:** ResourceQuota only works in conjunction with resource requests/limits on Pods. If a Pod doesn't specify requests/limits, it can't be counted and the quota won't work correctly.
+
+**Check quota usage:**
+```bash
+kubectl describe resourcequota -n team-a
+kubectl get resourcequota -n team-a
+```
+
+**Compare with LimitRange:** ResourceQuota limits aggregate namespace usage. LimitRange sets per-Pod defaults and min/max values.
 </b></details>
 
 <details>
@@ -2478,6 +2967,28 @@ In Kubernetes, a HorizontalPodAutoscaler automatically updates a workload resour
 
 <details>
 <summary>When you delete a pod, is it deleted instantly? (a moment after running the command)</summary><br><b>
+
+No — not instantly. Pod deletion is a **graceful process**:
+
+1. `kubectl delete pod <name>` sends a DELETE request to the API server
+2. The Pod enters `Terminating` state
+3. Kubernetes sends SIGTERM to all containers — they have `terminationGracePeriodSeconds` (default 30s) to shut down gracefully
+4. If containers are still running after the grace period, SIGKILL is sent (force kill)
+5. Pod is removed from etcd
+
+**The grace period can be controlled:**
+```bash
+kubectl delete pod my-pod --grace-period=60   # Wait 60 seconds
+kubectl delete pod my-pod --force --grace-period=0   # Force immediate kill (skip graceful shutdown)
+```
+
+**What happens during termination:**
+- Pod is removed from Service endpoints (stops receiving new traffic)
+- PreStop hook executes (if defined)
+- Containers receive SIGTERM
+- kubelet cleans up volumes and network resources
+
+[Kubernetes docs: Pod Termination](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination)
 </b></details>
 
 <details>
@@ -2487,18 +2998,226 @@ In Kubernetes, a HorizontalPodAutoscaler automatically updates a workload resour
 
 <details>
 <summary>Explain the pet and cattle approach of infrastructure with respect to kubernetes</summary><br><b>
+
+This analogy distinguishes two server management philosophies:
+
+**Pets (traditional):**
+- Servers have unique names (webserver-prod-01, db-master-east)
+- You nurture them — when sick, you log in and fix them
+- They're irreplaceable — downtime while you diagnose
+- Configuration drifts over time (snowflake servers)
+
+**Cattle (Kubernetes approach):**
+- Servers are numbered (node-01, node-02, ..., node-10)
+- When one is unhealthy, you don't fix it — you replace it
+- Identical, disposable, and replaceable
+- Pods are cattle: `frontend-7d4f8b9c-x2k3j` gets replaced by `frontend-7d4f8b9c-y7m4p`
+
+**Kubernetes embodies the cattle model:**
+- If a Pod fails, the ReplicaSet/Deployment creates a new one
+- If a Node fails, Pods are rescheduled to healthy nodes
+- Immutable infrastructure: don't patch running containers — build a new image and redeploy
+- Health checks (liveness/readiness probes) automatically detect and replace unhealthy instances
+
+**Key takeaway:** Design your applications to survive being killed and replaced. Don't assume your Pod will run forever — it won't.
 </b></details>
 
 <details>
 <summary>Describe how you one proceeds to run a containerized web app in K8s, which should be reachable from a public URL.</summary><br><b>
+
+Step-by-step approach to deploying a containerized web app accessible from the internet:
+
+**1. Containerize the app:**
+```dockerfile
+FROM nginx:alpine
+COPY ./html /usr/share/nginx/html
+EXPOSE 80
+```
+```bash
+docker build -t myapp:v1 .
+docker push myregistry/myapp:v1
+```
+
+**2. Create a Deployment:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp
+        image: myregistry/myapp:v1
+        ports:
+        - containerPort: 80
+```
+
+**3. Expose via Service:**
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+spec:
+  type: LoadBalancer    # Cloud LB; or use NodePort + Ingress
+  selector:
+    app: myapp
+  ports:
+  - port: 80
+    targetPort: 80
+```
+
+**4. (Alternative) Use Ingress for HTTP routing:**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp-ingress
+spec:
+  rules:
+  - host: app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: myapp-svc
+            port:
+              number: 80
+```
+
+**5. Apply and verify:**
+```bash
+kubectl apply -f deployment.yaml -f service.yaml -f ingress.yaml
+kubectl get pods,svc,ingress
+curl app.example.com
+```
+
+**6. (Production) Add TLS via cert-manager:**
+```yaml
+# cert-manager automatically obtains Let's Encrypt certs for Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - app.example.com
+    secretName: app-tls
+```
 </b></details>
 
 <details>
 <summary>How would you troubleshoot your cluster if some applications are not reachable any more?</summary><br><b>
+
+A systematic troubleshooting approach from the outside in:
+
+**1. Check the application layer:**
+```bash
+kubectl get pods -l app=myapp
+kubectl describe pod <pod-name>       # Check Events, State, Conditions
+kubectl logs <pod-name> --tail=50     # Check container logs
+kubectl logs <pod-name> --previous    # Logs from crashed container
+```
+
+**2. Check the Service layer:**
+```bash
+kubectl get svc myapp-svc             # Is ClusterIP assigned?
+kubectl describe svc myapp-svc        # Check Endpoints — are Pod IPs listed?
+kubectl get endpoints myapp-svc       # Empty endpoints = Service selector doesn't match any Pods
+```
+
+**3. Check readiness/liveness probes:**
+- A failing readiness probe removes Pod from Service endpoints — traffic stops
+- A failing liveness probe restarts the Pod
+
+**4. Check if DNS resolves:**
+```bash
+kubectl run -it --rm debug --image=busybox -- nslookup myapp-svc.default.svc.cluster.local
+```
+
+**5. Check Network Policies:**
+```bash
+kubectl get networkpolicies             # Any policies blocking traffic?
+```
+
+**6. Check Ingress/Ingress Controller:**
+```bash
+kubectl describe ingress myapp-ingress
+kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
+```
+
+**7. Check Node health:**
+```bash
+kubectl get nodes
+kubectl describe node <node-name>   # Check Conditions, MemoryPressure, DiskPressure
+kubectl top nodes                   # Resource usage
+```
+
+**Common causes:**
+- Wrong selector labels (Service doesn't match Pod)
+- Readiness probe failing
+- Resource limits causing OOMKill
+- NetworkPolicy blocking traffic
+- Ingress controller not running or misconfigured
+- DNS/CoreDNS issues in the cluster
 </b></details>
 
 <details>
 <summary>Describe what CustomResourceDefinitions there are in the Kubernetes world? What they can be used for?</summary><br><b>
+
+CustomResourceDefinitions (CRDs) extend the Kubernetes API by letting you define your own resource types. They're the foundation of the Operator pattern.
+
+**What CRDs enable:**
+- Define domain-specific APIs in Kubernetes (e.g., `Database`, `Certificate`, `Alert`)
+- Manage custom resources with `kubectl` like native resources
+- Validation via OpenAPI v3 schema
+- Versioning (v1alpha1 → v1beta1 → v1)
+
+**Example CRD:**
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: databases.example.com
+spec:
+  group: example.com
+  names:
+    kind: Database
+    plural: databases
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            properties:
+              engine: { type: string }
+              version: { type: string }
+```
+
+**Popular CRDs in the ecosystem:**
+- cert-manager: `Certificate`, `Issuer`
+- Istio: `VirtualService`, `DestinationRule`
+- Prometheus Operator: `ServiceMonitor`, `PrometheusRule`
+- Argo CD: `Application`
+- Crossplane: `RDSInstance`, `GKE`
+
+Operators read CRDs and reconcile the actual state to match the desired state — the same pattern Kubernetes itself uses.
 </b></details>
 
 <details>
@@ -2513,7 +3232,53 @@ View more [here](https://www.youtube.com/watch?v=rDCWxkvPlAw)
 </b></details>
 
 <details>
-<summary> How are labels and selectors used?</summary><br><b>
+<summary>How are labels and selectors used?</summary><br><b>
+
+**Labels** are key-value pairs for organizing, identifying, and grouping resources:
+```yaml
+labels:
+  app: frontend
+  env: production
+  version: v1.3
+```
+
+**Selectors** filter objects by their labels. They're how Kubernetes components find the resources they should act on.
+
+**Controller usage — Deployment → Pods:**
+```yaml
+spec:
+  selector:
+    matchLabels:
+      app: frontend        # Deployment manages Pods with app=frontend
+  template:
+    metadata:
+      labels:
+        app: frontend      # Created Pods MUST have this label
+```
+
+**Service → Pods (traffic routing):**
+```yaml
+spec:
+  selector:
+    app: frontend          # Route traffic to Pods with app=frontend
+```
+
+**CLI usage:**
+```bash
+kubectl get pods -l app=frontend
+kubectl get pods -l 'env in (production,staging)'
+kubectl get pods -l '!version'           # Pods without version label
+```
+
+**NetworkPolicy → target Pods:**
+```yaml
+spec:
+  podSelector:
+    matchLabels:
+      role: database       # Apply policy to database pods
+```
+
+Use standard label conventions: `app.kubernetes.io/name`, `app.kubernetes.io/version`, `app.kubernetes.io/component`, etc.
 </b></details>
 
 <details>
@@ -2532,10 +3297,68 @@ Kubernetes labels are key-value pairs that can connect identifying metadata with
 
 <details>
 <summary>Explain Selectors</summary><br><b>
+
+Selectors filter Kubernetes objects by their labels. Two types:
+
+**Equality-based:**
+```yaml
+matchLabels:
+  app: nginx
+  env: production
+# AND: app=nginx AND env=production
+```
+
+**Set-based:**
+```yaml
+matchExpressions:
+- {key: env, operator: In, values: [production, staging]}
+- {key: version, operator: NotIn, values: [deprecated]}
+- {key: tier, operator: Exists}        # Has tier label
+- {key: critical, operator: DoesNotExist}
+```
+
+Operators: `In`, `NotIn`, `Exists`, `DoesNotExist`.
+
+**Where they're used:** Services route to Pods via selectors. Deployments find Pods via `matchLabels`. NetworkPolicies apply to Pods via `podSelector`. Node affinity / Pod affinity use selectors for scheduling.
 </b></details>
 
 <details>
 <summary>What is Kubeconfig?</summary><br><b>
+
+A kubeconfig file (`~/.kube/config`) stores cluster connection information that `kubectl` uses to authenticate and communicate with Kubernetes clusters.
+
+**Structure:**
+```yaml
+apiVersion: v1
+kind: Config
+clusters:                # Cluster endpoints
+- name: prod-cluster
+  cluster:
+    server: https://k8s.example.com:6443
+    certificate-authority: /path/to/ca.crt
+users:                   # User credentials
+- name: admin
+  user:
+    client-certificate: /path/to/admin.crt
+    client-key: /path/to/admin.key
+contexts:                # Cluster + user + namespace combinations
+- name: prod-admin
+  context:
+    cluster: prod-cluster
+    user: admin
+    namespace: default
+current-context: prod-admin   # Active context
+```
+
+**Common operations:**
+```bash
+kubectl config view                      # Show merged kubeconfig
+kubectl config current-context           # Show active context
+kubectl config use-context dev-admin     # Switch context
+kubectl config set-context prod --namespace=team-a   # Set default namespace
+```
+
+**For multi-cluster management:** Store multiple clusters/users/contexts in one kubeconfig, or use `KUBECONFIG` env var to merge multiple files.
 </b></details>
 
 ### Gatekeeper
@@ -3023,6 +3846,61 @@ TODO: add more monitoring solutions
 
 <details>
 <summary>What is Kustomize?</summary><br><b>
+
+Kustomize is a Kubernetes-native configuration management tool that customizes YAML manifests without templating. It uses a base + overlay pattern — define a base configuration, then apply environment-specific patches.
+
+**How it works:**
+```
+base/
+├── kustomization.yaml    # Resources to include, common labels
+├── deployment.yaml       # Base deployment
+└── service.yaml          # Base service
+
+overlays/
+├── production/
+│   ├── kustomization.yaml  # Patches + patches + replicas override
+│   └── replica_count.yaml  # Increase replicas for prod
+└── staging/
+    └── kustomization.yaml  # Different namespace, fewer replicas
+```
+
+**Base `kustomization.yaml`:**
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- deployment.yaml
+- service.yaml
+commonLabels:
+  app: myapp
+```
+
+**Overlay `kustomization.yaml`:**
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base
+namespace: production
+patchesStrategicMerge:
+- replica_count.yaml
+```
+
+**Built into kubectl since 1.14:**
+```bash
+kubectl apply -k overlays/production/
+kubectl kustomize overlays/production/    # Preview rendered YAML
+```
+
+**Kustomize vs. Helm:**
+| | Kustomize | Helm |
+|---|---|---|
+| Approach | Patch/overlay (no templates) | Template with values (Go templates) |
+| Built-in | Yes (`kubectl -k`) | Needs Helm CLI |
+| Complexity | Simpler, flatter learning curve | More powerful for complex templating |
+| Best for | Multi-env variations of the same app | Distributable packages with parameterization |
+
+Kustomize is the foundation of Flux CD's GitOps approach and is widely used in production Kubernetes clusters.
 </b></details>
 
 <details>
@@ -3152,7 +4030,130 @@ Yes, using taints, we could run the following command and it will prevent from a
 <details>
 <summary>You would like to limit the number of resources being used in your cluster. For example no more than 4 replicasets, 2 services, etc. How would you achieve that?</summary><br><b>
 
-Using ResourceQuats
+Using ResourceQuotas
+</b></details>
+
+### Modern Kubernetes
+
+<details>
+<summary>What is the Gateway API? How is it different from Ingress?</summary><br><b>
+
+Gateway API is the next-generation Ingress — a set of CRDs that provide more expressive, role-oriented, and extensible traffic routing than the standard Ingress resource.
+
+**Key improvements over Ingress:**
+| | Ingress | Gateway API |
+|---|---|---|
+| **Maturity** | GA, universal support | Growing (GA for Gateway/GatewayClass/HTTPRoute in 1.0) |
+| **Protocol support** | HTTP/HTTPS | HTTP, TCP, UDP, TLS, gRPC |
+| **Routing** | Host + path only | Header-based, weight-based, method-based, query-based |
+| **Roles** | Single resource | Separate Gateway (infra admin), HTTPRoute (app developer) |
+| **Extensibility** | Annotations (provider-specific, inconsistent) | Policy CRDs, backend TLS, cross-namespace routing |
+
+**Core resources:**
+```yaml
+kind: GatewayClass     # "What kind of gateway?" (like StorageClass — defines the implementation)
+kind: Gateway          # "Give me a load balancer on port 80/443"
+kind: HTTPRoute        # "Route /api to backend-service, /web to frontend-service"
+```
+
+**Example:**
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: my-app-route
+spec:
+  parentRefs:
+  - name: my-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: api-service
+      port: 8080
+```
+
+**Implementations:** Istio, Contour, Cilium, NGINX Gateway Fabric, AWS Gateway API Controller.
+
+Reference: [Gateway API](https://gateway-api.sigs.k8s.io/)
+</b></details>
+
+<details>
+<summary>What are Pod Disruption Budgets (PDB) and why are they important?</summary><br><b>
+
+A PodDisruptionBudget limits the number of Pods of a replicated application that can be down simultaneously from **voluntary disruptions** (node drains, cluster autoscaler, kubectl drain). It does NOT protect against involuntary disruptions (node crash, OOMKill).
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: myapp-pdb
+spec:
+  minAvailable: 2        # At least 2 Pods must always be available
+  # OR:
+  # maxUnavailable: 1    # At most 1 Pod can be unavailable
+  selector:
+    matchLabels:
+      app: myapp
+```
+
+**Why PDBs matter:**
+- During cluster upgrades, `kubectl drain` won't evict Pods if the PDB would be violated
+- Prevents accidentally taking down all replicas of a critical service
+- Essential for StatefulSet quorum (e.g., etcd, Kafka, Cassandra — need majority online)
+
+**Command to check:**
+```bash
+kubectl get pdb
+kubectl describe pdb myapp-pdb
+```
+
+**Best practice:** Set PDBs on all production Deployments and StatefulSets. Without a PDB, a node drain can take down all replicas simultaneously.
+</b></details>
+
+<details>
+<summary>Explain GitOps with Argo CD in Kubernetes</summary><br><b>
+
+GitOps uses Git as the single source of truth for declarative infrastructure and application configuration. Argo CD is the leading Kubernetes-native GitOps tool.
+
+**How Argo CD works:**
+1. You define your desired application state in Git (manifests, Helm charts, Kustomize overlays)
+2. Argo CD polls Git every 3 minutes (or receives webhook) and compares desired state vs. actual cluster state
+3. If there's a difference, Argo CD shows "OutOfSync" — it auto-syncs (if configured) or waits for manual approval
+4. If someone manually changes a resource in the cluster (`kubectl edit`), Argo CD detects drift and can auto-revert
+
+**Key concept — Application CRD:**
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/org/infra
+    path: apps/myapp/overlays/production
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    automated:
+      prune: true        # Delete resources that are removed from Git
+      selfHeal: true     # Revert manual changes in cluster
+    syncOptions:
+    - CreateNamespace=true
+```
+
+**Benefits:**
+- **Auditability** — Every change goes through Git history, with commit messages and PR reviews
+- **Disaster recovery** — Recreate the entire cluster state from Git
+- **Security** — No direct `kubectl` access needed; CD tool has the credentials
+- **Multi-cluster** — Same Git repo can deploy to dev/staging/prod clusters
+
+**Other GitOps tools:** Flux CD, Rancher Fleet.
 </b></details>
 
 <!-- {% endraw %} -->
