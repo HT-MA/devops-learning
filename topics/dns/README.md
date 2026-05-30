@@ -10,7 +10,14 @@ computer networking (at layer 3 of the OSP model) is done with IP addresses but 
 <details>
 <summary>What is DNS resolution?</summary><br><b>
 
-The process of translating IP addresses to domain names.
+DNS resolution is the process of converting a domain name (like `www.example.com`) into an IP address (like `93.184.216.34`) that computers use to route traffic. It works in reverse too — reverse DNS (PTR records) maps IP → domain name.
+
+**Two types:**
+| | Recursive | Iterative |
+|---|---|---|
+| **Who does the work** | DNS resolver | DNS resolver + client |
+| **Typical client** | End user's browser | DNS server to DNS server |
+| **Example** | Your ISP's resolver fully resolves google.com for you | A resolver asks root→TLD→authoritative step by step |
 </b></details>
 
 <details>
@@ -88,14 +95,22 @@ A mapping between domain name and an IP address.
 <details>
 <summary>What types of DNS records are there?</summary><br><b>
 
-  * A
-  * CNAME
-  * PTR
-  * MX
-  * AAAA
-  ...
+Common DNS record types:
 
-A more detailed list, can be found [here](https://www.nslookup.io/learning/dns-record-types)
+| Type | Purpose | Example |
+|------|---------|---------|
+| **A** | Name → IPv4 address | `example.com. A 93.184.216.34` |
+| **AAAA** | Name → IPv6 address | `example.com. AAAA 2606:2800:220:1:248:1893:25c8:1946` |
+| **CNAME** | Alias → canonical name | `www.example.com. CNAME example.com.` |
+| **MX** | Mail server for domain | `example.com. MX 10 mail.example.com.` |
+| **NS** | Authoritative name servers | `example.com. NS ns1.example.com.` |
+| **PTR** | IP → name (reverse DNS) | `34.216.184.93.in-addr.arpa. PTR example.com.` |
+| **TXT** | Arbitrary text data | SPF, DKIM, domain verification |
+| **SOA** | Start of Authority — zone metadata | Serial number, refresh/retry timers |
+| **SRV** | Service location (host:port) | `_sip._tcp.example.com. SRV 10 60 5060 sip.example.com.` |
+| **CAA** | Certificate Authority Authorization | Which CAs can issue certs for this domain |
+
+More types: [DNS Record Types](https://www.nslookup.io/learning/dns-record-types/)
 </b></details>
 
 <details>
@@ -157,7 +172,15 @@ DNS uses UDP port 53 for resolving queries either regular or reverse. DNS uses T
 <details>
 <summary>True or False? DNS can be used for load balancing</summary><br><b>
 
-True.
+True. DNS-based load balancing distributes traffic by returning different IP addresses for the same domain name. It's simple, doesn't require a dedicated load balancer, but has limitations — DNS caching means clients may use stale IPs, and it doesn't check server health.
+
+**How it works:**
+```
+example.com. A 10.0.0.1   (server A)
+example.com. A 10.0.0.2   (server B)
+example.com. A 10.0.0.3   (server C)
+```
+The DNS server rotates the order of responses, distributing traffic across servers.
 </b></details>
 
 <details>
@@ -188,3 +211,118 @@ There are several types, including:
 
 * Stub zone: A stub zone is a type of zone that contains only the essential information about a domain name. It is used to reduce the amount of DNS traffic and improve the efficiency of the DNS resolution process.
 </b></details>
+
+### DNS Troubleshooting & Tools
+
+<details>
+<summary>What tools do you use to troubleshoot DNS issues?</summary><br><b>
+
+```bash
+# dig — most powerful DNS lookup tool
+dig example.com                    # Full DNS query with all details
+dig example.com +short             # Just the IP
+dig example.com MX                 # Mail server records
+dig @8.8.8.8 example.com           # Query specific DNS server
+dig -x 8.8.8.8                     # Reverse DNS lookup
+dig example.com +trace             # Trace full resolution path from root
+
+# nslookup — simpler, cross-platform
+nslookup example.com
+nslookup example.com 8.8.8.8      # Specify DNS server
+
+# host — quick, simple
+host example.com
+
+# whois — domain registration info
+whois example.com
+```
+
+**Common troubleshooting workflow:**
+1. `dig example.com +short` — can you resolve the name at all?
+2. `dig example.com +trace` — where does resolution break?
+3. `dig @8.8.8.8 example.com` — is your local DNS resolver the problem?
+4. Check `/etc/resolv.conf` for DNS server configuration
+5. Check `/etc/hosts` for local overrides
+</b></details>
+
+### Advanced DNS
+
+<details>
+<summary>What is DNSSEC? Why is it important?</summary><br><b>
+
+DNSSEC (Domain Name System Security Extensions) adds cryptographic signatures to DNS records, ensuring responses are authentic and haven't been tampered with. Without DNSSEC, an attacker can poison DNS caches and redirect traffic to malicious sites.
+
+**How it works:**
+- Each DNS zone signs its records with a private key
+- Resolvers verify the signature using the zone's public key (published as a DS record in the parent zone)
+- Forms a "chain of trust" from the root zone (`.`) down
+
+**What it protects against:**
+- DNS cache poisoning (Kaminsky attack)
+- Man-in-the-middle DNS spoofing
+- Response tampering
+
+**What it does NOT protect:**
+- Confidentiality (DNS queries are still unencrypted — use DoH/DoT for that)
+- DDoS attacks
+- Phishing (if the original site is compromised)
+
+**Validation check:**
+```bash
+dig example.com +dnssec     # Look for the `ad` flag (Authenticated Data)
+```
+</b></details>
+
+<details>
+<summary>What is DNS over HTTPS (DoH) and DNS over TLS (DoT)?</summary><br><b>
+
+Both encrypt DNS queries to prevent eavesdropping and tampering:
+
+| | DoH (DNS over HTTPS) | DoT (DNS over TLS) |
+|---|---|---|
+| **Port** | 443 | 853 |
+| **Protocol** | HTTP/2 + TLS | DNS over TLS |
+| **Blends in** | Looks like regular HTTPS traffic | Separate port, identifiable |
+| **Best for** | Privacy (harder to block/filter) | Enterprise (can be controlled via firewall) |
+
+**Why they matter:**
+- Traditional DNS (UDP/53) is plaintext — anyone on the network can see what sites you visit
+- ISPs and governments can intercept and redirect DNS queries
+- DoH/DoT encrypts the query, so only you and the DNS resolver know what you're looking up
+
+**DoH resolvers:** Cloudflare (`1.1.1.1`), Google (`8.8.8.8`), Quad9 (`9.9.9.9`)
+</b></details>
+
+<details>
+<summary>What is Split-horizon DNS?</summary><br><b>
+
+Split-horizon (or split-brain) DNS serves different DNS responses based on where the query comes from — internal network vs. the internet.
+
+**Use case:**
+- Internal users resolve `mail.company.com` → `10.0.1.50` (internal IP)
+- External users resolve `mail.company.com` → `203.0.113.50` (public IP)
+- Same domain name, different answers based on source
+
+**Why use it:**
+- Simpler internal URLs (no `mail.internal.company.com`)
+- Security — internal server IPs are hidden from the public internet
+- Performance — internal traffic stays on the internal network
+
+**Implementation:** BIND views, Route53 Resolver rules (AWS), or separate internal/external DNS servers.
+</b></details>
+
+<details>
+<summary>What is Anycast DNS?</summary><br><b>
+
+Anycast DNS advertises the same IP address from multiple physical locations. When a user sends a DNS query, BGP routing sends it to the nearest (lowest latency) DNS server advertising that IP.
+
+**Benefits:**
+- **Low latency** — Users hit the geographically closest server
+- **DDoS resilience** — Attack traffic is distributed across all locations, each absorbing a fraction
+- **Automatic failover** — If one location goes down, BGP withdraws the route and traffic flows to the next nearest
+
+**Who uses it:** All major public DNS services — Cloudflare `1.1.1.1`, Google `8.8.8.8`, OpenDNS. This is why `ping 8.8.8.8` is consistently fast from anywhere in the world — you're hitting a nearby Google data center, not Mountain View.
+
+**vs. Unicast:** Traditional DNS uses unicast — different IP per server, geographic routing via GeoDNS (returning different IPs based on requester location). Anycast is simpler at the network layer.
+</b></details>
+

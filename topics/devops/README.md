@@ -1067,3 +1067,59 @@ Platform Engineering is the practice of building internal developer platforms (I
 - "Developers should focus on features" → the line between "building" and "running" is artificial — a feature that doesn't run reliably isn't complete
 </b></details>
 
+<details>
+<summary>What is DevSecOps? How is it different from DevOps?</summary><br><b>
+
+DevSecOps integrates security practices into every phase of the DevOps pipeline — it's DevOps with security as a first-class citizen, not an afterthought.
+
+**Core principles:**
+1. **Shift Left Security** — Security testing moves earlier in the SDLC (pre-commit → CI → CD), not just before release
+2. **Automation** — Security checks run automatically in CI/CD, not manual reviews
+3. **Shared responsibility** — Security is everyone's job, not just the security team's
+
+**Key practices:**
+| Stage | Security Activity | Tools |
+|-------|-------------------|-------|
+| **Code** | Secret scanning, SAST, dependency scanning | truffleHog, Semgrep, Snyk, Dependabot |
+| **Build** | Container image scanning, SBOM generation | Trivy, Grype, Syft |
+| **Test** | DAST, fuzzing, IaC scanning | OWASP ZAP, checkov, tfsec |
+| **Deploy** | Policy as code, admission control | OPA/Gatekeeper, Kyverno, Sentinel |
+| **Run** | Runtime security, vulnerability management | Falco, Aqua, Prisma Cloud |
+
+**DevOps vs. DevSecOps:**
+- DevOps: Speed + collaboration
+- DevSecOps: Speed + collaboration + security embedded throughout
+- DevSecOps is NOT a separate role — it's DevOps done right (security isn't a gate at the end)
+</b></details>
+
+<details>
+<summary>Explain "Shift Right" in DevOps — what happens after deployment?</summary><br><b>
+
+While "Shift Left" moves testing earlier, "Shift Right" extends DevOps practices into production operations — learning from real-world usage.
+
+**Shift Right practices:**
+
+1. **Feature Flags / Canary Releases** — Deploy code to production dark (behind a flag), then progressively enable for users. If something breaks, disable the flag — no rollback needed.
+
+2. **A/B Testing** — Test hypotheses with real users: 5% get variant A, 5% get variant B, measure which performs better.
+
+3. **Chaos Engineering** — Deliberately inject failures in production to test resilience:
+```bash
+# Terminate random pods in production
+chaos-mesh terminate pods --namespace production --mode random
+```
+"If you haven't tested your fallback systems, they don't work."
+
+4. **Observability in Production** — Distributed tracing, structured logging, real user monitoring (RUM). Not just "is it up?" but "are users succeeding?"
+
+5. **Feedback Loops** — Production data flows back to development:
+- Error budgets consumed → feature freeze → fix reliability
+- P95 latency spike → performance optimization sprint
+- User behavior data → inform next feature priorities
+
+**Shift Left + Shift Right = Full DevOps Loop:**
+```
+Code → Build → Test → Deploy → Observe → Learn → Code (repeat)
+```
+</b></details>
+

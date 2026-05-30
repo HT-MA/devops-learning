@@ -110,10 +110,48 @@ Michelangelo
   * <code>echo $?</code>
   * <code>echo $$</code>
   * <code>echo $#</code></summary><br><b>
+
+These are special shell variables:
+| Variable | Meaning | Example |
+|----------|---------|---------|
+| `$0` | Name of the script/process | `./myscript.sh` |
+| `$?` | Exit code of the last command | `0` = success, non-zero = failure |
+| `$$` | Process ID (PID) of the current shell/script | `12345` |
+| `$#` | Number of arguments passed to the script | `3` |
+
+**Practical usage:**
+```bash
+#!/bin/bash
+echo "Running $0 with PID $$"
+echo "You passed $# arguments"
+some_command
+if [ $? -ne 0 ]; then
+    echo "some_command failed with exit code $?"
+fi
+```
 </b></details>
 
 <details>
 <summary>What is <code>$@</code>?</summary><br><b>
+
+`$@` expands to all positional parameters (arguments) passed to a script or function, with each argument treated as a **separate quoted string**. It's the safest way to iterate over arguments.
+
+**Example:**
+```bash
+#!/bin/bash
+for arg in "$@"; do
+    echo "Arg: $arg"
+done
+# ./script.sh "hello world" foo  → Arg: hello world, Arg: foo
+```
+
+**`$@` vs `$*`:**
+| | `$@` | `$*` |
+|---|---|---|
+| Quoted | `"$@"` → `"arg1" "arg2" "arg3"` | `"$*"` → `"arg1 arg2 arg3"` (one string) |
+| Best for | Iterating arguments safely | Joining all args into one string |
+
+**Always use `"$@"` when iterating arguments** — it preserves spaces within arguments.
 </b></details>
 
 <details>
@@ -142,10 +180,76 @@ if [ ${#1} -ne ${#2} ]; then
 
 <details>
 <summary>Explain conditionals and demonstrate how to use them</summary><br><b>
+
+Conditionals control script flow based on conditions.
+
+**if/elif/else:**
+```bash
+if [ "$name" = "Todd" ]; then
+    echo "Hello Todd"
+elif [ "$name" = "root" ]; then
+    echo "Hello root"
+else
+    echo "Who are you?"
+fi
+```
+
+**Common test operators:**
+```bash
+# String comparisons
+[ "$a" = "$b" ]       # Equal
+[ "$a" != "$b" ]      # Not equal
+[ -z "$a" ]           # Is empty/zero length
+[ -n "$a" ]           # Is NOT empty
+
+# Numeric comparisons
+[ "$a" -eq "$b" ]     # Equal
+[ "$a" -ne "$b" ]     # Not equal
+[ "$a" -gt "$b" ]     # Greater than
+[ "$a" -lt "$b" ]     # Less than
+
+# File tests
+[ -f "$file" ]        # Is a regular file
+[ -d "$dir" ]         # Is a directory
+[ -x "$script" ]      # Is executable
+[ -e "$path" ]        # Exists
+```
+
+**Modern alternative — `[[ ]]` (preferred):**
+```bash
+# Supports regex, pattern matching, no word splitting
+if [[ $version =~ ^[0-9]+\.[0-9]+$ ]]; then
+    echo "Valid semver"
+fi
+```
 </b></details>
 
 <details>
 <summary>In shell scripting, how to negate a conditional?</summary><br><b>
+
+Use `!` before the condition:
+
+```bash
+# Negate with !
+if [ ! -f /etc/config ]; then
+    echo "Config file missing"
+fi
+
+# With [[ ]]
+if [[ ! $name = "root" ]]; then
+    echo "You are not root"
+fi
+
+# Negate command exit status
+if ! ping -c 1 google.com > /dev/null; then
+    echo "No internet connection"
+fi
+```
+
+**Common pattern — check if file doesn't exist:**
+```bash
+[ ! -f /etc/app.conf ] && echo "No config found" && exit 1
+```
 </b></details>
 
 <details>
@@ -163,13 +267,31 @@ if [[ ${var//*.} =~ $regex ]]; then
 <details>
 <summary>How to perform arithmetic operations on numbers?</summary><br><b>
 
-One way: `$(( 1 + 2 ))`
-Another way: `expr 1 + 2`
+Three methods:
+
+```bash
+# 1. $(( )) — preferred, POSIX-compliant
+result=$(( 10 + 5 ))      # 15
+result=$(( 10 * 5 ))      # 50
+result=$(( 10 / 3 ))      # 3 (integer division)
+
+# 2. let — builtin
+let "result = 10 + 5"
+
+# 3. expr — external command (slower)
+result=$(expr 10 + 5)
+```
+
+**Common operations:**
+```bash
+count=$(( count + 1 ))    # Increment
+(( count++ ))             # Shorthand
+remainder=$(( 10 % 3 ))   # Modulo → 1
+power=$(( 2 ** 10 ))      # Exponentiation → 1024
+```
 </b></details>
 
-<details>
-<summary>How to perform arithmetic operations on numbers?</summary><br><b>
-</b></details>
+
 
 <details>
 <summary>How to check if a given number has 4 as a factor?</summary><br><b>
@@ -181,10 +303,80 @@ Another way: `expr 1 + 2`
 
 <details>
 <summary>What is a loop? What types of loops are you familiar with?</summary><br><b>
+
+Loops repeat a block of code multiple times. Shell supports four loop types:
+
+| Type | Use case |
+|------|----------|
+| `for` | Iterate over a list of items |
+| `while` | Repeat while condition is true |
+| `until` | Repeat until condition becomes true |
+| `select` | Create interactive menus |
+
+**for — iterate over files/values:**
+```bash
+for file in *.txt; do
+    echo "Processing $file"
+done
+
+for i in {1..5}; do
+    echo "Iteration $i"
+done
+```
+
+**while — condition-based repetition:**
+```bash
+count=1
+while [ $count -le 5 ]; do
+    echo "Count: $count"
+    ((count++))
+done
+```
+
+**until — opposite of while:**
+```bash
+until ping -c 1 google.com; do
+    echo "Waiting for network..."
+    sleep 5
+done
+```
 </b></details>
 
 <details>
 <summary>Demonstrate how to use loops</summary><br><b>
+
+```bash
+# for loop — iterate over list
+for fruit in apple banana orange; do
+    echo "Fruit: $fruit"
+done
+
+# for loop — C-style
+for (( i=0; i<5; i++ )); do
+    echo "i=$i"
+done
+
+# while loop — read file line by line
+while IFS= read -r line; do
+    echo "Line: $line"
+done < /etc/hosts
+
+# while — infinite loop with break
+while true; do
+    read -p "Enter name (or 'quit'): " name
+    [[ $name = "quit" ]] && break
+    echo "Hello $name"
+done
+
+# select — interactive menu
+select option in "Install" "Update" "Quit"; do
+    case $option in
+        Install) echo "Installing..."; break ;;
+        Update)   echo "Updating..."; break ;;
+        Quit)     exit ;;
+    esac
+done
+```
 </b></details>
 
 #### Shell Scripting - Troubleshooting
@@ -236,6 +428,54 @@ shuf -i 9999999-99999999 -n 1
 
 <details>
 <summary>Can you give an example to some Bash best practices?</summary><br><b>
+
+Essential Bash best practices for production scripts:
+
+1. **Start with `set -euo pipefail`:**
+```bash
+#!/bin/bash
+set -euo pipefail
+# -e: exit on any error
+# -u: error on undefined variables
+# -o pipefail: fail if any command in a pipe fails
+```
+
+2. **Quote variables to prevent word splitting:**
+```bash
+# ❌ Breaks if filename has spaces
+rm $file
+# ✅ Correct
+rm "$file"
+```
+
+3. **Use `$( )` instead of backticks:**
+```bash
+# ❌ Hard to nest and read
+files=`ls \`pwd\``
+# ✅ Clear and nestable
+files=$(ls "$(pwd)")
+```
+
+4. **Prefer `[[ ]]` over `[ ]`** for safer tests (Bash/Zsh).
+
+5. **Use meaningful variable names** (UPPERCASE for env vars, lowercase for local).
+
+6. **Check exit codes of critical commands:**
+```bash
+if ! command_that_might_fail; then
+    echo "Fatal error" >&2
+    exit 1
+fi
+```
+
+7. **Use `trap` for cleanup:**
+```bash
+trap 'rm -f /tmp/lock' EXIT
+```
+
+8. **Validate input** — never trust user input without validation.
+
+9. **ShellCheck** — always lint with `shellcheck script.sh`.
 </b></details>
 
 <details>
@@ -243,7 +483,15 @@ shuf -i 9999999-99999999 -n 1
 
 A short way of using if/else. An example:
 
+```bash
 [[ $a = 1 ]] && b="yes, equal" || b="nope"
+```
+
+**Caveat:** The `&&`/`||` pattern is NOT a true ternary — if the first command succeeds but the second fails, the third runs anyway. For safety:
+```bash
+# Safer — use if/else for complex logic
+if [[ $a = 1 ]]; then b="yes"; else b="no"; fi
+```
 </b></details>
 
 <details>
@@ -251,14 +499,47 @@ A short way of using if/else. An example:
 
 <code>diff <(ls /tmp) <(ls /var/tmp)</code>
 
-</summary><br>
-It is called 'process substitution'. It provides a way to pass the output of a command to another command when using a pipe <code>|</code> is not possible. It can be used when a command does not support <code>STDIN</code> or you need the output of multiple commands.
-https://superuser.com/a/1060002/167769
-</details>
+</summary><br><b>
+
+It's called **process substitution** — `<(command)` creates a temporary file descriptor with the command's output, allowing you to pass it to commands like `diff` that expect file paths (not stdin).
+
+**When to use:** When a command needs file arguments but you want to compare command output without creating temporary files.
+
+**More examples:**
+```bash
+# Compare two command outputs
+diff <(ls dir1) <(ls dir2)
+
+# Feed command output as a "file"
+while read line; do echo "Got: $line"; done < <(grep "ERROR" /var/log/app.log)
+```
+</b></details>
 
 <details>
 <summary>What are you using for testing shell scripts?</summary><br><b>
 
-bats
+**Bats** (Bash Automated Testing System) is the most popular framework for testing shell scripts:
+
+```bash
+# test/my_script.bats
+#!/usr/bin/env bats
+
+@test "script exits with 0" {
+  run ./my_script.sh
+  [ "$status" -eq 0 ]
+}
+
+@test "script outputs expected string" {
+  run ./my_script.sh hello
+  [ "$output" = "Hello, hello" ]
+}
+```
+
+**ShellCheck** for static analysis:
+```bash
+shellcheck my_script.sh    # Catch bugs and anti-patterns
+```
+
+**Other testing tools:** shUnit2, bash_unit, roundup.
 </b></details>
 

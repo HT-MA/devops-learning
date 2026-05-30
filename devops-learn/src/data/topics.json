@@ -8081,12 +8081,12 @@
         {
           "id": "dora-metrics",
           "title": "DORA & Metrics",
-          "questionCount": 5
+          "questionCount": 7
         }
       ],
-      "questionCount": 68,
+      "questionCount": 70,
       "exerciseCount": 0,
-      "totalItems": 68,
+      "totalItems": 70,
       "questions": [
         {
           "question": "What is DevOps?",
@@ -8427,6 +8427,16 @@
           "question": "Explain the concept of \"You build it, you run it\"",
           "answer": "\"You build it, you run it\" (YBIYRI) is a core DevOps principle popularized by Amazon/Werner Vogels (CTO of Amazon, 2006). It means the team that builds a service is also responsible for operating it in production.\r\n\r\n**The core idea:**\r\n- No throwing code \"over the wall\" to an operations team\r\n- Developers are on-call for their services (with SRE support)\r\n- When you feel the pain of your own design decisions at 3 AM, you make better decisions\r\n\r\n**What it enables:**\r\n- **Better design** — If you know you'll be paged for it, you build better error handling, logging, and graceful degradation\r\n- **Faster feedback** — The person who wrote the code fixes the bug, instead of an ops engineer who's never seen it\r\n- **Accountability** — No \"it worked on my machine\" — the developer sees real production behavior\r\n- **Reduced MTTR** — The developer knows the system best and can diagnose faster\r\n\r\n**What it requires:**\r\n- Excellent observability (logs, metrics, traces must be accessible to the team)\r\n- Automated deployment and rollback (so the developer can push fixes without ops gatekeeping)\r\n- Blameless culture (otherwise it's just punishment disguised as ownership)\r\n- Proper on-call compensation and rotation policies (don't burn out developers)\r\n\r\n**Common objections and responses:**\r\n- \"Our developers don't know ops\" → invest in platform engineering and self-service tools\r\n- \"It's risky to give devs production access\" → use break-glass access, audit logs, and pre-approved runbooks\r\n- \"Developers should focus on features\" → the line between \"building\" and \"running\" is artificial — a feature that doesn't run reliably isn't complete",
           "section": "dora-metrics"
+        },
+        {
+          "question": "What is DevSecOps? How is it different from DevOps?",
+          "answer": "DevSecOps integrates security practices into every phase of the DevOps pipeline — it's DevOps with security as a first-class citizen, not an afterthought.\r\n\r\n**Core principles:**\r\n1. **Shift Left Security** — Security testing moves earlier in the SDLC (pre-commit → CI → CD), not just before release\r\n2. **Automation** — Security checks run automatically in CI/CD, not manual reviews\r\n3. **Shared responsibility** — Security is everyone's job, not just the security team's\r\n\r\n**Key practices:**\r\n| Stage | Security Activity | Tools |\r\n|-------|-------------------|-------|\r\n| **Code** | Secret scanning, SAST, dependency scanning | truffleHog, Semgrep, Snyk, Dependabot |\r\n| **Build** | Container image scanning, SBOM generation | Trivy, Grype, Syft |\r\n| **Test** | DAST, fuzzing, IaC scanning | OWASP ZAP, checkov, tfsec |\r\n| **Deploy** | Policy as code, admission control | OPA/Gatekeeper, Kyverno, Sentinel |\r\n| **Run** | Runtime security, vulnerability management | Falco, Aqua, Prisma Cloud |\r\n\r\n**DevOps vs. DevSecOps:**\r\n- DevOps: Speed + collaboration\r\n- DevSecOps: Speed + collaboration + security embedded throughout\r\n- DevSecOps is NOT a separate role — it's DevOps done right (security isn't a gate at the end)",
+          "section": "dora-metrics"
+        },
+        {
+          "question": "Explain \"Shift Right\" in DevOps — what happens after deployment?",
+          "answer": "While \"Shift Left\" moves testing earlier, \"Shift Right\" extends DevOps practices into production operations — learning from real-world usage.\r\n\r\n**Shift Right practices:**\r\n\r\n1. **Feature Flags / Canary Releases** — Deploy code to production dark (behind a flag), then progressively enable for users. If something breaks, disable the flag — no rollback needed.\r\n\r\n2. **A/B Testing** — Test hypotheses with real users: 5% get variant A, 5% get variant B, measure which performs better.\r\n\r\n3. **Chaos Engineering** — Deliberately inject failures in production to test resilience:\r\n```bash\r\n# Terminate random pods in production\r\nchaos-mesh terminate pods --namespace production --mode random\r\n```\r\n\"If you haven't tested your fallback systems, they don't work.\"\r\n\r\n4. **Observability in Production** — Distributed tracing, structured logging, real user monitoring (RUM). Not just \"is it up?\" but \"are users succeeding?\"\r\n\r\n5. **Feedback Loops** — Production data flows back to development:\r\n- Error budgets consumed → feature freeze → fix reliability\r\n- P95 latency spike → performance optimization sprint\r\n- User behavior data → inform next feature priorities\r\n\r\n**Shift Left + Shift Right = Full DevOps Loop:**\r\n```\r\nCode → Build → Test → Deploy → Observe → Learn → Code (repeat)\r\n```",
+          "section": "dora-metrics"
         }
       ],
       "exercises": []
@@ -8700,6 +8710,303 @@
         }
       ],
       "exercises": []
+    },
+    {
+      "slug": "ansible",
+      "name": "Ansible",
+      "category": "automation",
+      "categoryName": "automation",
+      "color": "#EE0000",
+      "sections": [
+        {
+          "id": "ansible-exercises",
+          "title": "Ansible Exercises",
+          "questionCount": 0
+        },
+        {
+          "id": "ansible-self-assessment",
+          "title": "Ansible Self Assessment",
+          "questionCount": 48
+        },
+        {
+          "id": "ansible-vs-other-tools",
+          "title": "Ansible vs. Other Tools",
+          "questionCount": 4
+        }
+      ],
+      "questionCount": 52,
+      "exerciseCount": 1,
+      "totalItems": 53,
+      "questions": [
+        {
+          "question": "Describe each of the following components in Ansible, including the relationship between them:\r \r   * Task\r   * Inventory\t\r   * Module\r   * Play\r   * Playbook\r   * Role",
+          "answer": "Task – a call to a specific Ansible module\r\nModule – the actual unit of code executed by Ansible on your own host or a remote host. Modules are indexed by category (database, file, network, …) and also referred to as task plugins.\r\n\t\r\nInventory – An inventory file defines hosts and/or groups of hosts on which Ansible tasks executed upon. The inventory file can be in one of many formats, depending on the inventory plugins you have. The most common formats are INI and YAML.\r\n\r\nPlay – One or more tasks executed on a given host(s)\r\n\r\nPlaybook – One or more plays. Each play can be executed on the same or different hosts\r\n\r\nRole – Ansible roles allows you to group resources based on certain functionality/service such that they can be easily reused. In a role, you have directories for variables, defaults, files, templates, handlers, tasks, and metadata. You can then use the role by simply specifying it in your playbook.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "How Ansible is different from other automation tools? (e.g. Chef, Puppet, etc.)",
+          "answer": "Ansible is:\r\n\r\n* Agentless\r\n* Minimal run requirements (Python & SSH) and simple to use\r\n* Default mode is \"push\" (it supports also pull)\r\n* Focus on simpleness and ease-of-use",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "True or False? Ansible follows the mutable infrastructure paradigm",
+          "answer": "True. In immutable infrastructure approach, you'll replace infrastructure instead of modifying it.\r\nAnsible rather follows the mutable infrastructure paradigm where it allows you to change the configuration of different components, but this approach is not perfect and has its own disadvantages like \"configuration drift\" where different components may reach different state for different reasons.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "True or False? Ansible uses declarative style to describe the expected end state",
+          "answer": "False. It uses a procedural style.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What kind of automation you wouldn't do with Ansible and why?",
+          "answer": "While it's possible to provision resources with Ansible, some prefer to use tools that follow immutable infrastructure paradigm.\r\nAnsible doesn't saves state by default. So a task that creates 5 instances for example, when executed again will create additional 5 instances (unless\r\nadditional check is implemented or explicit names are provided) while other tools might check if 5 instances exist. If only 4 exist (by checking the state file for example), one additional instance will be created to reach the end goal of 5 instances.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "How do you list all modules and how can you see details on a specific module?",
+          "answer": "1. Ansible online docs\r\n2. `ansible-doc -l` for list of modules and `ansible-doc [module_name]` for detailed information on a specific module",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What is an inventory file and how do you define one?",
+          "answer": "An inventory file defines hosts and/or groups of hosts on which Ansible tasks executed upon.\r\n\r\nAn example of inventory file:\r\n\r\n```\r\n192.168.1.2\r\n192.168.1.3\r\n192.168.1.4\r\n\r\n[web_servers]\r\n190.40.2.20\r\n190.40.2.21\r\n190.40.2.22\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What is a dynamic inventory file? When you would use one?",
+          "answer": "A dynamic inventory file tracks hosts from one or more sources like cloud providers and CMDB systems.\r\n\r\nYou should use one when using external sources and especially when the hosts in your environment are being automatically\r\nspun up and shut down, without you tracking every change in these sources.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Modify the following task to use a variable instead of the value \"zlib\" and have \"zlib\" as the default in case the variable is not defined\r \r ```\r - name: Install a package\r   package:\r     name: \"zlib\"\r     state: present\r ```",
+          "answer": "```\r\n- name: Install a package\r\n  package:\r\n    name: \"{{ package_name|default('zlib') }}\"\r\n    state: present\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "How to make the variable \"use_var\" optional?\r \r ```\r - name: Install a package\r   package:\r     name: \"zlib\"\r     state: present\r     use: \"{{ use_var }}\"\r ```",
+          "answer": "With \"default(omit)\"\r\n```\r\n- name: Install a package\r\n  package:\r\n    name: \"zlib\"\r\n    state: present\r\n    use: \"{{ use_var|default(omit) }}\"\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What would be the result of the following play?",
+          "answer": "```\r\n---\r\n- name: Print information about my host\r\n  hosts: localhost\r\n  gather_facts: 'no'\r\n  tasks:\r\n      - name: Print hostname\r\n        debug:\r\n            msg: \"It's me, {{ ansible_hostname }}\"\r\n```\r\n\r\nWhen given a written code, always inspect it thoroughly. If your answer is “this will fail” then you are right. We are using a fact (ansible_hostname), which is a gathered piece of information from the host we are running on. But in this case, we disabled facts gathering (gather_facts: no) so the variable would be undefined which will result in failure.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "When the value '2017'' will be used in this case: `{{ lookup('env', 'BEST_YEAR') | default('2017', true) }}`?",
+          "answer": "when the environment variable 'BEST_YEAR' is empty or false.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "If the value of certain variable is 1, you would like to use the value \"one\", otherwise, use \"two\". How would you do it?",
+          "answer": "`{{ (certain_variable == 1) | ternary(\"one\", \"two\") }}`",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "The value of a certain variable you use is the string \"True\". You would like the value to be a boolean. How would you cast it?",
+          "answer": "`{{ some_string_var | bool }}`",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "You want to run Ansible playbook only on specific minor version of your OS, how would you achieve that?",
+          "answer": "Use the `ansible_distribution_version` fact combined with conditionals.\r\n\r\n**Example — run only on Ubuntu 22.04:**\r\n```yaml\r\n- hosts: all\r\n  tasks:\r\n    - name: Run only on Ubuntu 22.04\r\n      debug:\r\n        msg: \"This is Ubuntu 22.04\"\r\n      when:\r\n        - ansible_distribution == \"Ubuntu\"\r\n        - ansible_distribution_version is version('22.04', '==')\r\n```\r\n\r\n**Using the `version` filter:**\r\n```yaml\r\nwhen: ansible_distribution_version is version('22.04', '>=')\r\n```\r\nThe `version` filter supports operators: `==`, `!=`, `>=`, ``, `=')\r\n```\r\n\r\n**Alternative — limit at inventory level:**\r\n```ini\r\n[web_servers]\r\nhost1 ansible_host=10.0.0.1\r\nhost2 ansible_host=10.0.0.2\r\n\r\n[rhel9_servers:children]\r\nweb_servers\r\n\r\n[rhel9_servers:vars]\r\nansible_python_interpreter=/usr/bin/python3.9\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What the \"become\" directive used for in Ansible?",
+          "answer": "`become` is Ansible's privilege escalation system — it allows you to run tasks as a different user (typically `root`). It's the Ansible equivalent of `sudo`, `su`, or `sudo su -`.\r\n\r\n**Common usage:**\r\n```yaml\r\n- name: Install nginx\r\n  apt:\r\n    name: nginx\r\n    state: present\r\n  become: yes          # Escalate to root for this task\r\n\r\n- name: Restart nginx as specific user\r\n  service:\r\n    name: nginx\r\n    state: restarted\r\n  become: yes\r\n  become_user: www-data   # Become a specific user\r\n```\r\n\r\n**become at different levels:**\r\n| Level | Example | Scope |\r\n|-------|---------|-------|\r\n| Task | `become: yes` on a single task | That task only |\r\n| Play | `become: yes` under the play | All tasks in the play |\r\n| CLI | `ansible-playbook play.yml --become` | The entire run |\r\n| Inventory | `ansible_become=yes` in inventory | Per-host |\r\n\r\n**Other become directives:**\r\n- `become_method: sudo` (default), `su`, `doas`, `pbrun`, `runas`\r\n- `become_flags: '-H -S'` — additional flags passed to the become method\r\n- `become_ask_pass: true` — prompt for the become password\r\n\r\n**Security best practice:** Only use `become: yes` on tasks that actually need elevated privileges, not blanket on every task.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What are facts? How to see all the facts of a certain host?",
+          "answer": "Facts are system/host information that Ansible gathers automatically at the start of each play (unless `gather_facts: no` is set). They include details about the OS, network interfaces, CPU, memory, disks, IP addresses, etc.\r\n\r\n**Common facts:**\r\n```yaml\r\nansible_hostname       # Hostname\r\nansible_distribution   # Ubuntu, RHEL, Debian, etc.\r\nansible_distribution_version  # 22.04, 9.2, etc.\r\nansible_os_family      # Debian, RedHat, Windows\r\nansible_architecture   # x86_64, aarch64\r\nansible_default_ipv4.address  # Primary IP address\r\nansible_memtotal_mb    # Total memory in MB\r\nansible_processor_vcpus  # CPU count\r\n```\r\n\r\n**View all facts for a host:**\r\n```bash\r\n# Ad-hoc command\r\nansible  -m ansible.builtin.setup\r\n\r\n# For a specific host in a playbook\r\nansible  -m setup -i inventory\r\n\r\n# Filter to specific facts\r\nansible  -m setup -a \"filter=ansible_distribution*\"\r\n\r\n# In a playbook\r\n- name: Print all facts\r\n  debug:\r\n    var: ansible_facts\r\n```\r\n\r\n**Using facts in playbooks:**\r\n```yaml\r\n- name: Install package based on OS\r\n  apt:\r\n    name: nginx\r\n    state: present\r\n  when: ansible_os_family == \"Debian\"\r\n\r\n- name: Install on RHEL\r\n  dnf:\r\n    name: nginx\r\n    state: present\r\n  when: ansible_os_family == \"RedHat\"\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What would be the result of running the following task? How to fix it?\r \r ```\r - hosts: localhost\r   tasks:\r       - name: Install zlib\r         package:\r           name: zlib\r           state: present\r ```",
+          "answer": "The task will **fail** because installing packages requires root privileges, but `become: yes` is not set.\r\n\r\n**Error message:**\r\n```\r\nfatal: [localhost]: FAILED! => {\"changed\": false, \"msg\": \"You need to be root to perform this command.\"}\r\n```\r\n\r\n**Fix — add become:**\r\n```yaml\r\n- hosts: localhost\r\n  become: yes       # Escalate to root\r\n  tasks:\r\n      - name: Install zlib\r\n        package:\r\n          name: zlib\r\n          state: present\r\n```\r\n\r\n**Additional considerations:**\r\n- Use the generic `package` module (auto-detects package manager) or specific module (`apt`, `dnf`, `yum`)\r\n- The generic `package` module requires Python's `apt` or `dnf` bindings depending on the OS\r\n- If targeting multiple OS types, use `when` conditionals with specific package names",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Which Ansible best practices are you familiar with?. Name at least three",
+          "answer": "Key Ansible best practices:\r\n\r\n1. **Use meaningful names** — Every play, task, role, and variable should have a descriptive name. `- name: Install and configure nginx web server` is better than `- name: run task`.\r\n\r\n2. **Keep it idempotent** — Running the same playbook twice should produce the same result. Use modules like `lineinfile`, `template`, `copy` which are naturally idempotent. Avoid raw `command`/`shell` unless absolutely necessary.\r\n\r\n3. **Use roles to organize** — Group related tasks, handlers, variables, templates, and files into roles. A typical structure: `roles/webserver/{tasks,handlers,templates,vars,defaults,meta}/`.\r\n\r\n4. **Version control everything** — Store playbooks, roles, inventory, and requirements in Git. Never commit secrets (use `ansible-vault`).\r\n\r\n5. **Use `ansible-lint`** — Validate playbooks for errors, deprecated syntax, and style violations: `ansible-lint site.yml`.\r\n\r\n6. **Pin collection versions** — In `requirements.yml`, pin versions to avoid unexpected changes:\r\n   ```yaml\r\n   collections:\r\n     - name: community.general\r\n       version: \">=8.0.0,<9.0.0\"\r\n   ```\r\n\r\n7. **Use `check_mode` and `diff`** — Test before applying:\r\n   ```bash\r\n   ansible-playbook site.yml --check --diff\r\n   ```\r\n\r\n8. **Encrypt sensitive data** — Use `ansible-vault` for secrets, passwords, API keys. Never store plaintext secrets in Git.\r\n\r\n9. **Limit scope with `--limit`** — Test on a subset before rolling out to all hosts.\r\n\r\n10. **Document dependencies** — Use `meta/main.yml` in roles to declare role dependencies.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Explain the directory layout of an Ansible role",
+          "answer": "An Ansible role follows a standard directory structure. You can generate it with:\r\n```bash\r\nansible-galaxy role init my_role\r\n```\r\n\r\n**Directory layout:**\r\n```\r\nmy_role/\r\n├── defaults/         # Default variables (lowest priority)\r\n│   └── main.yml\r\n├── files/            # Static files to copy to hosts\r\n├── handlers/         # Handlers triggered by 'notify'\r\n│   └── main.yml\r\n├── meta/             # Role metadata, dependencies, galaxy info\r\n│   └── main.yml\r\n├── tasks/            # Main list of tasks to execute\r\n│   └── main.yml\r\n├── templates/        # Jinja2 templates (.j2 files)\r\n├── tests/            # Test playbook and inventory\r\n│   ├── inventory\r\n│   └── test.yml\r\n├── vars/             # Role variables (higher priority than defaults)\r\n│   └── main.yml\r\n└── README.md         # Documentation\r\n```\r\n\r\n**Key directories explained:**\r\n| Directory | Purpose |\r\n|-----------|---------|\r\n| `tasks/` | Contains the list of tasks. `main.yml` is the entry point. Can include other task files. |\r\n| `defaults/` | Default values for variables. Overridden by any other variable source. |\r\n| `vars/` | Role variables. Higher priority than defaults but lower than playbook/extra vars. |\r\n| `handlers/` | Special tasks triggered by `notify` (e.g., restart a service after config change). |\r\n| `templates/` | Jinja2 templates that get rendered with variables and copied to hosts. |\r\n| `meta/` | Galaxy metadata (author, license, platform) and role dependencies. |\r\n| `files/` | Static files (scripts, configs) to be copied as-is. |\r\n\r\nNot all directories are required — only `tasks/` is mandatory for a minimal role.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What 'blocks' are used for in Ansible?",
+          "answer": "Blocks group multiple tasks together so you can apply common directives (error handling, conditionals, privilege escalation, tags) to all of them at once.\r\n\r\n**Key use cases:**\r\n\r\n**1. Error handling with `rescue` and `always`:**\r\n```yaml\r\n- block:\r\n    - name: Attempt risky operation\r\n      command: /usr/bin/make --jobs=4\r\n    - name: Run post-build script\r\n      command: /usr/bin/post-build.sh\r\n  rescue:\r\n    - name: Run if ANY task in the block fails\r\n      debug:\r\n        msg: \"Build failed — cleaning up\"\r\n    - name: Send alert\r\n      uri:\r\n        url: https://alerts.example.com/webhook\r\n        method: POST\r\n  always:\r\n    - name: This always runs (cleanup, logging)\r\n      command: /usr/bin/cleanup.sh\r\n```\r\n\r\n**2. Apply conditionals to a group of tasks:**\r\n```yaml\r\n- block:\r\n    - name: Install apache\r\n      apt:\r\n        name: apache2\r\n    - name: Start apache\r\n      service:\r\n        name: apache2\r\n        state: started\r\n  when: ansible_os_family == \"Debian\"\r\n  become: yes\r\n```\r\n\r\n**3. Common `become` or `tags`:**\r\n```yaml\r\n- block:\r\n    - name: Copy config\r\n      template:\r\n        src: nginx.conf.j2\r\n        dest: /etc/nginx/nginx.conf\r\n    - name: Restart nginx\r\n      service:\r\n        name: nginx\r\n        state: restarted\r\n  become: yes\r\n  tags:\r\n    - nginx\r\n    - config\r\n```\r\n\r\n**Block semantics:**\r\n- `block:` — The tasks to execute\r\n- `rescue:` — Runs only if a task in the block fails (like `except` in Python)\r\n- `always:` — Always runs, success or failure (like `finally` in Python)",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "How do you handle errors in Ansible?",
+          "answer": "Ansible provides several mechanisms for error handling:\r\n\r\n**1. `ignore_errors: yes`** — Continue execution even if this task fails:\r\n```yaml\r\n- name: This might fail, that's OK\r\n  command: /bin/false\r\n  ignore_errors: yes\r\n```\r\n\r\n**2. `failed_when`** — Define custom failure conditions:\r\n```yaml\r\n- name: Run a script\r\n  command: /opt/scripts/backup.sh\r\n  register: result\r\n  failed_when:\r\n    - result.rc != 0\r\n    - \"'ERROR' in result.stderr\"\r\n```\r\n\r\n**3. `block/rescue/always`** — Structured error handling:\r\n```yaml\r\n- block:\r\n    - name: Try this\r\n      command: /bin/false\r\n  rescue:\r\n    - name: If block fails, do this\r\n      debug:\r\n        msg: \"Recovering from failure\"\r\n  always:\r\n    - name: Always cleanup\r\n      file:\r\n        path: /tmp/lock\r\n        state: absent\r\n```\r\n\r\n**4. `any_errors_fatal: true`** — Abort the entire play for all hosts if any host fails:\r\n```yaml\r\n- hosts: all\r\n  any_errors_fatal: true\r\n  tasks:\r\n    - name: If this fails on any one host, stop everything\r\n      ...\r\n```\r\n\r\n**5. `max_fail_percentage`** — Abort if more than X% of hosts fail:\r\n```yaml\r\n- hosts: webservers\r\n  max_fail_percentage: 30\r\n  tasks: ...\r\n```\r\n\r\n**6. `changed_when`** — Control whether a task reports as \"changed\":\r\n```yaml\r\n- name: Always report OK\r\n  command: /usr/bin/healthcheck.sh\r\n  changed_when: false\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "You would like to run a certain command if a task fails. How would you achieve that?",
+          "answer": "Use `block/rescue` — the standard way to run recovery tasks on failure:\r\n\r\n```yaml\r\n- name: Safe deployment\r\n  block:\r\n    - name: Pull new Docker image\r\n      command: docker pull myapp:latest\r\n    - name: Restart container\r\n      command: docker-compose up -d\r\n  rescue:\r\n    - name: Send alert on failure\r\n      uri:\r\n        url: https://hooks.slack.com/services/xxx\r\n        method: POST\r\n        body: '{\"text\": \"Deploy failed!\"}'\r\n```\r\n\r\n**Alternative approaches:**\r\n\r\n**Using `register` + conditional recovery:**\r\n```yaml\r\n- name: Attempt deployment\r\n  command: /opt/deploy.sh\r\n  register: deploy_result\r\n  ignore_errors: yes\r\n\r\n- name: Rollback on failure\r\n  command: /opt/rollback.sh\r\n  when: deploy_result is failed\r\n```\r\n\r\n**Using handlers for failure cleanup:**\r\n```yaml\r\n- name: Deploy app\r\n  command: /opt/deploy.sh\r\n  notify: cleanup on failure\r\n  ignore_errors: yes\r\n\r\nhandlers:\r\n  - name: cleanup on failure\r\n    command: rm -rf /tmp/deploy-staging/*\r\n    listen: cleanup on failure\r\n```\r\n\r\nThe `block/rescue` approach is preferred because:\r\n- Tasks in `rescue` only run on failure (clear intent)\r\n- You can chain multiple rescue tasks\r\n- `always` block runs regardless of success/failure",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Write a playbook to install ‘zlib’ and ‘vim’ on all hosts if the file ‘/tmp/mario’ exists on the system.",
+          "answer": "```\r\n---\r\n- hosts: all\r\n  vars:\r\n      mario_file: /tmp/mario\r\n      package_list:\r\n          - 'zlib'\r\n          - 'vim'\r\n  tasks:\r\n      - name: Check for mario file\r\n        stat:\r\n            path: \"{{ mario_file }}\"\r\n        register: mario_f\r\n\r\n      - name: Install zlib and vim if mario file exists\r\n        become: \"yes\"\r\n        package:\r\n            name: \"{{ item }}\"\r\n            state: present\r\n        with_items: \"{{ package_list }}\"\r\n        when: mario_f.stat.exists\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Write a single task that verifies all the files in files_list variable exist on the host",
+          "answer": "```\r\n- name: Ensure all files exist\r\n  assert:\r\n    that:\r\n      - item.stat.exists\r\n  loop: \"{{ files_list }}\"\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Write a playbook to deploy the file ‘/tmp/system_info’ on all hosts except for controllers group, with the following content",
+          "answer": "```\r\n  I'm  and my operating system is \r\n  ```\r\n\r\n  Replace  and   with the actual data for the specific host you are running on\r\n\r\nThe playbook to deploy the system_info file\r\n\r\n```\r\n---\r\n- name: Deploy /tmp/system_info file\r\n  hosts: all:!controllers\r\n  tasks:\r\n      - name: Deploy /tmp/system_info\r\n        template:\r\n            src: system_info.j2\r\n            dest: /tmp/system_info\r\n```\r\n\r\nThe content of the system_info.j2 template\r\n\r\n```\r\n# {{ ansible_managed }}\r\nI'm {{ ansible_hostname }} and my operating system is {{ ansible_distribution }\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "The variable 'whoami' defined in the following places:\r \r   * role defaults -> whoami: mario\r   * extra vars (variables you pass to Ansible CLI with -e) -> whoami: toad\r   * host facts -> whoami: luigi\r   * inventory variables (doesn’t matter which type) -> whoami: browser\r \r According to variable precedence, which one will be used?",
+          "answer": "The right answer is ‘toad’.\r\n\r\nVariable precedence is about how variables override each other when they set in different locations. If you didn’t experience it so far I’m sure at some point you will, which makes it a useful topic to be aware of.\r\n\r\nIn the context of our question, the order will be extra vars (always override any other variable) -> host facts -> inventory variables -> role defaults (the weakest).\r\n\r\nHere is the order of precedence from least to greatest (the last listed variables winning prioritization):\r\n\r\n1. command line values (eg “-u user”)\r\n2. role defaults [[1\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id15)\r\n3. inventory file or script group vars [[2\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id16)\r\n4. inventory group_vars/all [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n5. playbook group_vars/all [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n6. inventory group_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n7. playbook group_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n8. inventory file or script host vars [[2\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id16)\r\n9. inventory host_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n10. playbook host_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n11. host facts / cached set_facts [[4\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id18)\r\n12. play vars\r\n13. play vars_prompt\r\n14. play vars_files\r\n15. role vars (defined in role/vars/main.yml)\r\n16. block vars (only for tasks in block)\r\n17. task vars (only for the task)\r\n18. include_vars\r\n19. set_facts / registered vars\r\n20. role (and include_role) params\r\n21. include params\r\n22. extra vars (always win precedence)\r\n\r\nA full list can be found at  [PlayBook Variables](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#ansible-variable-precedence) . Also, note there is a significant difference between Ansible 1.x and 2.x.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "For each of the following statements determine if it’s true or false:\r \r   * A module is a collection of tasks\r   * It’s better to use shell or command instead of a specific module\r   * Host facts override play variables\r   * A role might include the following: vars, meta, and handlers\r   * Dynamic inventory is generated by extracting information from external sources\r   * It’s a best practice to use indentation of 2 spaces instead of 4\r   * ‘notify’ used to trigger handlers\r   * This “hosts: all:!controllers” means ‘run only on controllers group hosts",
+          "answer": "| Statement | True/False | Explanation |\r\n|-----------|------------|-------------|\r\n| A module is a collection of tasks | **False** | A module is a single unit of code (e.g., `apt`, `copy`, `service`). A **play** is a collection of tasks. |\r\n| It’s better to use shell or command instead of a specific module | **False** | Use specific modules whenever possible — they’re idempotent, handle errors better, and report meaningful “changed” status. `shell`/`command` should be a last resort. |\r\n| Host facts override play variables | **False** | Play variables override host facts. Variable precedence: extra vars > play vars > host facts > inventory vars > role defaults. |\r\n| A role might include the following: vars, meta, and handlers | **True** | A role can include `vars/`, `meta/`, `handlers/`, plus `tasks/`, `defaults/`, `templates/`, and `files/`. |\r\n| Dynamic inventory is generated by extracting information from external sources | **True** | Dynamic inventory scripts/plugins query cloud providers (AWS, GCP, Azure), CMDBs, or other sources to build the inventory at runtime. |\r\n| It’s a best practice to use indentation of 2 spaces instead of 4 | **True** | YAML convention uses 2 spaces for indentation. Ansible playbooks follow this standard. |\r\n| ‘notify’ used to trigger handlers | **True** | `notify` tells Ansible to run a handler (e.g., restart a service) if the task reports “changed”. Handlers run once at the end of the play, even if notified multiple times. |\r\n| This “hosts: all:!controllers” means ‘run only on controllers group hosts | **False** | The `!` means EXCLUDE. `all:!controllers` runs on ALL hosts EXCEPT those in the `controllers` group. |",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Explain the Difference between Forks and Serial & Throttle.",
+          "answer": "`Serial` is like running the playbook for each host in turn, waiting for completion of the complete playbook before moving on to the next host. `forks`=1 means run the first task in a play on one host before running the same task on the next host, so the first task will be run for each host before the next task is touched. Default fork is 5 in ansible.\r\n\r\n```\r\n[defaults]\r\nforks = 30\r\n```\r\n\r\n```\r\n- hosts: webservers\r\n  serial: 1\r\n  tasks:\r\n    - name: ...\r\n```\r\n\r\nAnsible also supports `throttle` This keyword limits the number of workers up to the maximum set via the forks setting or serial. This can be useful in restricting tasks that may be CPU-intensive or interact with a rate-limiting API\r\n\r\n```\r\ntasks:\r\n- command: /path/to/cpu_intensive_command\r\n  throttle: 1\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What is ansible-pull? How is it different from how ansible-playbook works?",
+          "answer": "`ansible-pull` inverts Ansible's default push architecture: instead of the control node pushing configurations to managed hosts, each host pulls configurations from a Git repository and applies them locally.\r\n\r\n**ansible-playbook (Push — default):**\r\n```\r\nControl Node ──push──> Host A\r\n              ──push──> Host B\r\n              ──push──> Host C\r\n```\r\n```bash\r\nansible-playbook -i inventory site.yml\r\n```\r\n\r\n**ansible-pull (Pull — inverted):**\r\n```\r\nGit Repo > /var/log/ansible-pull.log 2>&1\r\n```\r\n\r\n**Key differences:**\r\n| | ansible-playbook | ansible-pull |\r\n|---|---|---|\r\n| Direction | Push (control → hosts) | Pull (hosts → git) |\r\n| Initiator | Operator | Cron/systemd timer on host |\r\n| Inventory | Defined centrally | Typically `localhost,` |\r\n| Use case | Operator-driven changes | Auto-bootstrap, auto-heal |",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What is Ansible Vault?",
+          "answer": "Ansible Vault encrypts sensitive data (passwords, API keys, SSH keys, certificates) so they can be safely stored in version control alongside your playbooks.\r\n\r\n**Common operations:**\r\n```bash\r\n# Create a new encrypted file\r\nansible-vault create secrets.yml\r\n\r\n# Edit an encrypted file\r\nansible-vault edit secrets.yml\r\n\r\n# Encrypt an existing file\r\nansible-vault encrypt vars/production.yml\r\n\r\n# Decrypt (remove encryption)\r\nansible-vault decrypt vars/production.yml\r\n\r\n# View without editing\r\nansible-vault view secrets.yml\r\n\r\n# Change password\r\nansible-vault rekey secrets.yml\r\n```\r\n\r\n**Using encrypted variables in playbooks:**\r\n```yaml\r\n# secrets.yml (encrypted)\r\ndb_password: \"super_secret_password\"\r\napi_key: \"sk-1234567890\"\r\n\r\n# playbook.yml\r\n- hosts: databases\r\n  vars_files:\r\n    - secrets.yml\r\n  tasks:\r\n    - name: Configure database\r\n      mysql_user:\r\n        name: app_user\r\n        password: \"{{ db_password }}\"\r\n```\r\n\r\n**Running playbooks with Vault:**\r\n```bash\r\n# Prompt for password\r\nansible-playbook site.yml --ask-vault-pass\r\n\r\n# Password from file (CI/CD)\r\nansible-playbook site.yml --vault-password-file .vault-pass\r\n\r\n# Password from environment variable\r\necho \"$VAULT_PASSWORD\" > /tmp/vault-pass\r\nansible-playbook site.yml --vault-password-file /tmp/vault-pass\r\n```\r\n\r\n**Best practices:**\r\n- Encrypt `vars/` files, NOT playbooks themselves\r\n- Use a `.vault-pass` file that is in `.gitignore` for local dev\r\n- In CI/CD, store vault password as a secret (GitHub Secrets, GitLab CI Variables)\r\n- Use `--vault-id` for multiple vault passwords (dev/prod)",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Demonstrate each of the following with Ansible:\r \r   * Conditionals\r   * Loops",
+          "answer": "**Conditionals:**\r\n\r\n```yaml\r\n# Simple when\r\n- name: Install apache on Debian only\r\n  apt:\r\n    name: apache2\r\n    state: present\r\n  when: ansible_os_family == \"Debian\"\r\n\r\n# Multiple conditions (AND)\r\n- name: Run only on production web servers\r\n  debug:\r\n    msg: \"Production web server\"\r\n  when:\r\n    - inventory_hostname in groups['web_servers']\r\n    - env == \"production\"\r\n\r\n# OR condition\r\n- name: Install on Ubuntu OR CentOS\r\n  package:\r\n    name: nginx\r\n    state: present\r\n  when: ansible_distribution == \"Ubuntu\" or ansible_distribution == \"CentOS\"\r\n\r\n# Based on registered variable\r\n- name: Check if file exists\r\n  stat:\r\n    path: /etc/myapp/config.yml\r\n  register: config_file\r\n\r\n- name: Copy default config if missing\r\n  copy:\r\n    src: default-config.yml\r\n    dest: /etc/myapp/config.yml\r\n  when: not config_file.stat.exists\r\n\r\n# Ternary\r\n- name: Set environment-specific port\r\n  set_fact:\r\n    app_port: \"{{ (env == 'production') | ternary(443, 8080) }}\"\r\n```\r\n\r\n**Loops:**\r\n\r\n```yaml\r\n# loop (Recommended — replaces with_items)\r\n- name: Install multiple packages\r\n  apt:\r\n    name: \"{{ item }}\"\r\n    state: present\r\n  loop:\r\n    - nginx\r\n    - postgresql\r\n    - redis\r\n\r\n# loop with complex items (dict)\r\n- name: Create users\r\n  user:\r\n    name: \"{{ item.username }}\"\r\n    groups: \"{{ item.groups }}\"\r\n    state: present\r\n  loop:\r\n    - { username: 'alice', groups: 'developers' }\r\n    - { username: 'bob', groups: 'developers,admin' }\r\n\r\n# loop + when (per-item conditional)\r\n- name: Install packages except on dev\r\n  apt:\r\n    name: \"{{ item }}\"\r\n    state: present\r\n  loop:\r\n    - nginx\r\n    - postgresql\r\n  when: env != \"dev\"\r\n\r\n# loop_control (label, index, pause)\r\n- name: Process items with index\r\n  debug:\r\n    msg: \"{{ index }}: {{ item }}\"\r\n  loop:\r\n    - foo\r\n    - bar\r\n  loop_control:\r\n    index_var: index\r\n    label: \"{{ item }}\"    # Show this in output instead of full dict\r\n\r\n# until (retry loop)\r\n- name: Wait for service to be ready\r\n  uri:\r\n    url: http://localhost:8080/health\r\n  register: result\r\n  until: result.status == 200\r\n  retries: 12\r\n  delay: 10\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What are filters? Do you have experience with writing filters?",
+          "answer": "Filters are Jinja2 functions that transform data in Ansible templates and playbooks. They're applied with the `|` pipe operator.\r\n\r\n**Common built-in filters:**\r\n\r\n```yaml\r\n# Default values\r\n\"{{ some_var | default('fallback') }}\"\r\n\"{{ some_var | default(omit) }}\"          # Omit parameter entirely if undefined\r\n\r\n# Data manipulation\r\n\"{{ [1, 2, 3, 2] | unique }}\"             # [1, 2, 3]\r\n\"{{ [1, 2, 3] | min }}\"                   # 1\r\n\"{{ [1, 2, 3] | max }}\"                   # 3\r\n\"{{ {'a': 1, 'b': 2} | dict2items }}\"     # Convert dict to list of items\r\n\r\n# JSON/YAML\r\n\"{{ some_dict | to_nice_json }}\"\r\n\"{{ some_dict | to_nice_yaml }}\"\r\n\r\n# Type conversion\r\n\"{{ 'True' | bool }}\"                     # boolean True\r\n\"{{ 42 | string }}\"                       # \"42\"\r\n\"{{ some_var | type_debug }}\"             # Show data type\r\n\r\n# Path/file operations\r\n\"{{ '/etc/nginx/nginx.conf' | basename }}\"  # nginx.conf\r\n\"{{ '/etc/nginx/nginx.conf' | dirname }}\"   # /etc/nginx\r\n\r\n# Version comparison\r\n\"{{ ansible_distribution_version is version('22.04', '>=') }}\"\r\n```\r\n\r\n**Writing custom filters:**\r\n\r\nCreate a `filter_plugins/` directory next to your playbook:\r\n```python\r\n# filter_plugins/custom_filters.py\r\ndef capitalize_string(s):\r\n    return s.capitalize()\r\n\r\ndef to_gigabytes(value_in_mb):\r\n    return round(value_in_mb / 1024, 2)\r\n\r\nclass FilterModule:\r\n    def filters(self):\r\n        return {\r\n            'capitalize': capitalize_string,\r\n            'to_gb': to_gigabytes,\r\n        }\r\n```\r\n\r\n**Usage in playbook:**\r\n```yaml\r\n- debug:\r\n    msg: \"{{ 'hello world' | capitalize }}\"    # \"Hello world\"\r\n- debug:\r\n    msg: \"{{ ansible_memtotal_mb | to_gb }} GB\"\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Write a filter to capitalize a string",
+          "answer": "```\r\ndef cap(self, string):\r\n    return string.capitalize()\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "You would like to run a task only if previous task changed anything. How would you achieve that?",
+          "answer": "Use `register` to capture the result, then check `is changed` in the next task's condition:\r\n\r\n```yaml\r\n- name: Update configuration file\r\n  template:\r\n    src: nginx.conf.j2\r\n    dest: /etc/nginx/nginx.conf\r\n  register: config_result\r\n\r\n- name: Restart nginx if config changed\r\n  service:\r\n    name: nginx\r\n    state: restarted\r\n  when: config_result is changed\r\n```\r\n\r\n**Alternative — using `notify`/handlers (preferred for service restarts):**\r\n```yaml\r\ntasks:\r\n  - name: Update nginx config\r\n    template:\r\n      src: nginx.conf.j2\r\n      dest: /etc/nginx/nginx.conf\r\n    notify: restart nginx    # Only triggers handler if task changed\r\n\r\nhandlers:\r\n  - name: restart nginx\r\n    service:\r\n      name: nginx\r\n      state: restarted\r\n```\r\n\r\n**Compare register vs. handlers:**\r\n| Approach | When to use |\r\n|----------|-------------|\r\n| `register` + `when: result is changed` | One-off downstream tasks, or when you need the result for multiple actions |\r\n| `notify` + `handlers` | Standard pattern for restarting/reloading services. Handlers run once at end of play even if notified multiple times. |\r\n\r\n**Check other task attributes:**\r\n```yaml\r\nwhen: result is failed      # Task failed\r\nwhen: result is succeeded   # Task succeeded\r\nwhen: result is skipped     # Task was skipped (via when)\r\nwhen: result.rc != 0        # Non-zero return code\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What are callback plugins? What can you achieve by using callback plugins?",
+          "answer": "Callback plugins control Ansible's output and enable integration with external systems. They hook into Ansible events (task start, task end, playbook complete, etc.).\r\n\r\n**Categories of callback plugins:**\r\n\r\n**1. Output formatting (stdout callbacks):**\r\n```bash\r\n# Change output style\r\nexport ANSIBLE_STDOUT_CALLBACK=yaml     # Structured YAML output\r\nexport ANSIBLE_STDOUT_CALLBACK=json     # JSON output\r\nexport ANSIBLE_STDOUT_CALLBACK=unixy    # Unix-tool style\r\n```\r\n\r\n**Available stdout callbacks:**\r\n- `default` — Standard output\r\n- `yaml` / `json` — Machine-readable\r\n- `minimal` — Only task name and result\r\n- `actionable` — Only show tasks that had \"changed\" or \"failed\"\r\n- `profile_tasks` — Show execution time per task\r\n- `timer` — Show total playbook duration\r\n\r\n**2. Notification/Integration callbacks:**\r\n```yaml\r\n# ansible.cfg\r\n[defaults]\r\ncallback_whitelist = profile_tasks, slack\r\n```\r\n- `slack` — Send playbook results to Slack\r\n- `log_plays` — Log every play to a file\r\n- `mail` — Send email on failure\r\n- `sumologic` — Send logs to SumoLogic\r\n- `grafana_annotations` — Create Grafana annotations on deploy\r\n\r\n**Custom callback plugin:**\r\n```python\r\n# callback_plugins/custom_notify.py\r\nfrom ansible.plugins.callback import CallbackBase\r\n\r\nclass CallbackModule(CallbackBase):\r\n    CALLBACK_VERSION = 2.0\r\n    CALLBACK_TYPE = 'notification'\r\n    CALLBACK_NAME = 'custom_notify'\r\n\r\n    def v2_playbook_on_stats(self, stats):\r\n        hosts = stats.processed.keys()\r\n        for host in hosts:\r\n            summary = stats.summarize(host)\r\n            print(f\"Host {host}: {summary}\")\r\n```\r\n\r\n**Common use case — performance profiling:**\r\n```bash\r\nansible-playbook site.yml -e ansible_callback=profile_tasks\r\n# Output:\r\n# ======\r\n# update apt cache ------------ 12.45s\r\n# install nginx --------------- 5.32s\r\n# configure nginx -------------- 0.89s\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What is the difference between `include_task` and `import_task`?",
+          "answer": "| Aspect | `include_tasks` | `import_tasks` |\r\n|--------|----------------|----------------|\r\n| **When processed** | Dynamically at runtime | Statically at parse time |\r\n| **Conditional application** | `when` applies to each included task individually | `when` applies to ALL imported tasks as a block |\r\n| **Loops** | Can use `loop` with include_tasks | Cannot loop over import_tasks |\r\n| **Tags** | Tags apply to each included task | Tags apply to all imported tasks |\r\n| **Performance** | Slightly slower (evaluated at runtime) | Slightly faster (evaluated once) |\r\n\r\n**Example — `import_tasks` (static):**\r\n```yaml\r\n- name: Import setup tasks\r\n  import_tasks: setup.yml\r\n  when: env == \"production\"\r\n  tags: setup\r\n```\r\nAll tasks in `setup.yml` get the `when` condition and `setup` tag applied as a group. The file must exist when the playbook is parsed.\r\n\r\n**Example — `include_tasks` (dynamic):**\r\n```yaml\r\n- name: Include OS-specific tasks\r\n  include_tasks: \"{{ ansible_os_family }}.yml\"\r\n\r\n- name: Loop over includes\r\n  include_tasks: per_user.yml\r\n  loop: \"{{ user_list }}\"\r\n  loop_control:\r\n    loop_var: username\r\n```\r\nThe filename can use variables. Can be looped. `when` applies per-task.\r\n\r\n**Rule of thumb:**\r\n- Use `import_tasks` for static, always-loaded task files (basic setup, common operations)\r\n- Use `include_tasks` when: filename depends on a variable, you need to loop, or you need per-task conditionals\r\n- Similarly: `import_playbook` vs. `include_role` (dynamic) vs. `import_role` (static)\r\n\r\n**Also note:** There's `import_playbook` (static, import entire playbooks) and `include_role`/`import_role` (dynamic/static role inclusion).",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "File '/tmp/exercise' includes the following content\r \r ```\r Goku = 9001\r Vegeta = 5200\r Trunks = 6000\r Gotenks = 32\r ```\r \r With one task, switch the content to:\r \r ```\r Goku = 9001\r Vegeta = 250\r Trunks = 40\r Gotenks = 32\r ```",
+          "answer": "```\r\n- name: Change saiyans levels\r\n  lineinfile:\r\n    dest: /tmp/exercise\r\n    regexp: \"{{ item.regexp }}\"\r\n    line: \"{{ item.line }}\"\r\n  with_items:\r\n    - { regexp: '^Vegeta', line: 'Vegeta = 250' }\r\n    - { regexp: '^Trunks', line: 'Trunks = 40' }\r\n    ...\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "True or False? By default, Ansible will execute all the tasks in play on a single host before proceeding to the next host",
+          "answer": "False. Ansible will execute a single task on all hosts before moving to the next task in a play. As for today, it uses 5 forks by default.\r\nThis behavior is described as \"strategy\" in Ansible and it's configurable.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What is a \"strategy\" in Ansible? What is the default strategy?",
+          "answer": "A strategy in Ansible describes how Ansible will execute the different tasks on the hosts. By default Ansible is using the \"Linear strategy\" which defines that each task will run on all hosts before proceeding to the next task.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What strategies are you familiar with in Ansible?",
+          "answer": "- Linear: the default strategy in Ansible. Run each task on all hosts before proceeding.\r\n  - Free: For each host, run all the tasks until the end of the play as soon as possible\r\n  - Debug: Run tasks in an interactive way",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What the serial keyword is used for?",
+          "answer": "It's used to specify the number (or percentage) of hosts to run the full play on, before moving to next number of hosts in the group.\r\n\r\nFor example:\r\n```\r\n- name: Some play\r\n  hosts: databases\r\n  serial: 4\r\n```\r\n\r\nIf your group has 8 hosts. It will run the whole play on 4 hosts and then the same play on another 4 hosts.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "How do you test your Ansible based projects?",
+          "answer": "A multi-layered testing approach for Ansible projects:\r\n\r\n**1. Static Analysis:**\r\n```bash\r\n# Lint playbooks\r\nansible-lint site.yml\r\n\r\n# Syntax check\r\nansible-playbook site.yml --syntax-check\r\n\r\n# Check mode (dry run)\r\nansible-playbook site.yml --check --diff\r\n```\r\n\r\n**2. Unit/Functional Testing with Molecule:**\r\n```bash\r\n# Install\r\npip install molecule molecule-plugins[docker]\r\n\r\n# Initialize test scenario\r\nmolecule init scenario -r my_role --driver-name docker\r\n\r\n# Test workflow\r\nmolecule lint         # Lint the role\r\nmolecule create       # Create test instances (Docker containers)\r\nmolecule converge     # Apply the role\r\nmolecule verify       # Run testinfra/ansible tests\r\nmolecule idempotence  # Run converge again — must show 0 changes\r\nmolecule destroy      # Clean up\r\nmolecule test         # Run all steps above in sequence\r\n```\r\n\r\n**Example `molecule/default/verify.yml`:**\r\n```yaml\r\n- name: Verify nginx is installed and running\r\n  hosts: all\r\n  tasks:\r\n    - name: Check nginx package\r\n      package_facts:\r\n        manager: auto\r\n    - name: Assert nginx is installed\r\n      assert:\r\n        that: \"'nginx' in ansible_facts.packages\"\r\n    - name: Check port 80 is listening\r\n      wait_for:\r\n        port: 80\r\n        timeout: 5\r\n```\r\n\r\n**3. Integration Testing:**\r\n- `testinfra` — Pytest plugin for infrastructure testing\r\n- `ansible-verify` — Run assertion playbooks after deployment\r\n\r\n**4. CI/CD Pipeline integration:**\r\n```yaml\r\n# .github/workflows/ansible-ci.yml\r\njobs:\r\n  test:\r\n    steps:\r\n      - uses: actions/checkout@v4\r\n      - run: pip install ansible ansible-lint molecule molecule-plugins[docker]\r\n      - run: ansible-lint site.yml\r\n      - run: cd roles/my_role && molecule test\r\n```\r\n\r\n**5. Secrets validation:**\r\n```bash\r\n# Ensure no plaintext secrets in code\r\ngit secrets --scan\r\ntrufflehog filesystem .\r\n```",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What is Molecule? How does it works?",
+          "answer": "It's used to rapidy develop and test Ansbile roles.  Molecule can be used to test Ansible roles against a varaitey of Linux Distros at the same time.  This testing ability helps instill confidence of the automation today and as time go on while a role is maintined.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "You run Ansible tests and you get \"idempotence test failed\". What does it mean? Why idempotence is important?",
+          "answer": "**\"Idempotence test failed\" means:** Running the same playbook twice produced different results. The second run reported `changed=1` (or more), meaning something was modified on the second pass when it should have been a no-op.\r\n\r\n**Why it happens:**\r\n- Using `command`/`shell` modules that always report \"changed\" — these don't check state\r\n- Not using `creates`/`removes` with command modules\r\n- A template that generates different output each run (e.g., includes a timestamp)\r\n- A task that's reading mutable state (e.g., checking a dynamically changing value)\r\n\r\n**How to fix:**\r\n```yaml\r\n# ❌ Always reports changed\r\n- name: Run script\r\n  command: /opt/scripts/init.sh\r\n\r\n# ✅ Only runs if output file doesn't exist\r\n- name: Run script\r\n  command:\r\n    cmd: /opt/scripts/init.sh\r\n    creates: /opt/scripts/.initialized\r\n\r\n# ✅ Use changed_when\r\n- name: Run health check\r\n  command: /opt/health-check.sh\r\n  register: health\r\n  changed_when: false\r\n```\r\n\r\n**Why idempotence is important:**\r\n1. **Predictability** — You know exactly what changed and when. Running the same config 10 times shouldn't produce 10 different results.\r\n2. **Confidence** — If `changed=0` on the second run, you're confident the system is in the expected state. If `changed>0`, something is drifting.\r\n3. **Audit trails** — Changes map to specific playbook runs. Hard to audit when every run reports changes.\r\n4. **Reduced risk** — Idempotent playbooks are safe to re-run. Non-idempotent ones might break things on subsequent runs.\r\n5. **Compliance** — Proves configuration management is actually managing configuration, not just running scripts.\r\n\r\n**Molecule's idempotence check:**\r\n```bash\r\nmolecule idempotence   # Runs converge twice, second run must show changed=0\r\n```\r\nIf the second converge shows ANY changes, the idempotence test fails. This catches non-idempotent tasks before they reach production.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "How to find out the data type of a certain variable in one of the playbooks?",
+          "answer": "\"{{ some_var | type_debug }}\"",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "What are collections in Ansible?",
+          "answer": "Ansible Collections are a way to package and distribute modules, roles, plugins, and documentation in a structured format. They help organize and distribute automation code efficiently, especially for complex environments.",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Why Use Ansible Collections?",
+          "answer": "- Modular and reusable components\r\n  - Simplifies management of custom and third-party modules\r\n  - Provides a standardized way to distribute automation content\r\n  - Helps in version control and dependency management",
+          "section": "ansible-self-assessment"
+        },
+        {
+          "question": "Compare Ansible with Terraform. When would you use each?",
+          "answer": "| | Ansible | Terraform |\r\n|---|---|---|\r\n| **Primary use** | Configuration management, app deployment | Infrastructure provisioning |\r\n| **Paradigm** | Procedural (execute tasks in order) | Declarative (define desired state) |\r\n| **State management** | Stateless by default | Maintains state file (terraform.tfstate) |\r\n| **Infra lifecycle** | No native destroy — you write cleanup tasks | Full lifecycle: plan, apply, destroy |\r\n| **Agent** | Agentless (SSH/WinRM) | Agentless (API calls) |\r\n| **Idempotency** | Module-level (most modules are idempotent) | Architecture-level (compares desired vs. actual state) |\r\n| **Language** | YAML (playbooks) | HCL (HashiCorp Configuration Language) |\r\n\r\n**When to use Ansible:**\r\n- Configuring servers post-provisioning (install packages, configure services, deploy apps)\r\n- Day-2 operations (patching, updating, ongoing maintenance)\r\n- Immutable image building (Packer + Ansible provisioner)\r\n- Simple orchestration (restart services in order, run DB migrations)\r\n\r\n**When to use Terraform:**\r\n- Provisioning cloud infrastructure (VMs, VPCs, databases, load balancers, DNS)\r\n- Managing infrastructure lifecycle (create, update, destroy with dependency tracking)\r\n- Multi-cloud infrastructure (Terraform works across AWS, GCP, Azure, etc.)\r\n- Infrastructure that needs state tracking (Terraform knows if a resource was created outside of it)\r\n\r\n**They complement each other (common pattern):**\r\n```\r\nTerraform provisions infrastructure → Ansible configures it\r\n```\r\n```bash\r\n# Terraform provisions the VM and outputs its IP\r\nterraform apply -auto-approve\r\n\r\n# Ansible configures the VM using the IP from Terraform\r\nansible-playbook -i \"$(terraform output -raw vm_ip),\" site.yml\r\n```",
+          "section": "ansible-vs-other-tools"
+        },
+        {
+          "question": "What are Ansible Execution Environments (EE)? What is Ansible Navigator?",
+          "answer": "**Ansible Execution Environments (EE)** are container images that bundle Ansible Core, collections, Python dependencies, and system libraries into a single, consistent runtime. They replace the traditional approach of installing everything on a control node.\r\n\r\n**Why EEs exist:**\r\n- **Dependency hell** — Different projects need different Python/Ansible versions and collections\r\n- **Consistency** — \"Works on my control node\" → \"Works everywhere\" (same container image)\r\n- **Security** — Containerized execution, no Python packages installed on the control host\r\n- **AWX/AAP** — Red Hat Ansible Automation Platform uses EEs natively\r\n\r\n**Building an EE:**\r\n```yaml\r\n# execution-environment.yml\r\n---\r\nversion: 3\r\ndependencies:\r\n  galaxy: requirements.yml\r\n  python: requirements.txt\r\nimages:\r\n  base_image:\r\n    name: registry.redhat.io/ansible-automation-platform-24/ee-minimal-rhel9:latest\r\n```\r\n```bash\r\nansible-builder build -t my-ee:latest\r\n```\r\n\r\n**Ansible Navigator** is the next-generation CLI that replaces `ansible-playbook`, `ansible-doc`, `ansible-inventory` and consolidates them into one tool:\r\n```bash\r\n# Run a playbook inside an EE\r\nansible-navigator run site.yml --eei my-ee:latest\r\n\r\n# Browse inventory interactively\r\nansible-navigator inventory -i hosts.yml --eei my-ee:latest\r\n\r\n# Browse available collections\r\nansible-navigator collections --eei my-ee:latest\r\n\r\n# Interactive mode (TUI)\r\nansible-navigator\r\n```\r\n\r\n**Key Navigator features:**\r\n- TUI (Text-based User Interface) for browsing playbook results\r\n- Built-in lint with `ansible-lint`\r\n- Execution Environment integration out of the box\r\n- Playbook artifact generation (JSON log of each run)\r\n\r\nThis is the direction Ansible is heading: container-first, reproducible execution with a unified CLI.",
+          "section": "ansible-vs-other-tools"
+        },
+        {
+          "question": "How do you manage Ansible Galaxy collections and roles?",
+          "answer": "Ansible Galaxy is the community hub for sharing Ansible content. Use `ansible-galaxy` CLI to install and manage collections and roles.\r\n\r\n**Install collections:**\r\n```bash\r\nansible-galaxy collection install community.general\r\nansible-galaxy collection install -r requirements.yml\r\n```\r\n\r\n**`requirements.yml`:**\r\n```yaml\r\n---\r\ncollections:\r\n  - name: community.general\r\n    version: \">=8.0.0,<9.0.0\"\r\n  - name: ansible.posix\r\n    version: \"1.5.4\"\r\n\r\nroles:\r\n  - name: geerlingguy.nginx\r\n    version: \"3.2.0\"\r\n```\r\n\r\n**Create and publish a collection:**\r\n```bash\r\nansible-galaxy collection init myorg.mycollection\r\n# Edit roles, modules, plugins\r\nansible-galaxy collection build\r\nansible-galaxy collection publish myorg-mycollection-1.0.0.tar.gz\r\n```\r\n\r\n**Project structure with collections:**\r\n```\r\nansible-project/\r\n├── collections/\r\n│   └── ansible_collections/\r\n│       └── myorg/\r\n│           └── mycollection/\r\n├── requirements.yml\r\n└── playbook.yml\r\n```\r\n\r\nAlways pin versions in `requirements.yml` — avoid \"latest\" breaking your playbooks unexpectedly.",
+          "section": "ansible-vs-other-tools"
+        },
+        {
+          "question": "What is ansible-lint and how does it integrate into CI?",
+          "answer": "`ansible-lint` is a static analysis tool that checks playbooks and roles for errors, deprecated syntax, and best practice violations.\r\n\r\n**Install and run:**\r\n```bash\r\npip install ansible-lint\r\nansible-lint site.yml\r\nansible-lint roles/my_role/\r\n```\r\n\r\n**What it catches:**\r\n- Deprecated module usage\r\n- Missing `name:` on tasks (best practice)\r\n- Risky `shell`/`command` usage (should use specific modules)\r\n- Package installation without `become: yes`\r\n- Missing `when:` condition on dangerous commands\r\n- FQCN violations (fully qualified collection names)\r\n\r\n**Example violations:**\r\n```yaml\r\n# ❌ No name\r\n- apt: name=nginx state=present\r\n\r\n# ✅ With name + FQCN\r\n- name: Install nginx\r\n  ansible.builtin.apt:\r\n    name: nginx\r\n    state: present\r\n```\r\n\r\n**CI integration:**\r\n```yaml\r\n# .github/workflows/ansible-ci.yml\r\n- name: Lint Ansible\r\n  run: |\r\n    ansible-lint site.yml\r\n    ansible-lint roles/*/\r\n```\r\nConfigure with `.ansible-lint` or `ansible-lint` key in `ansible.cfg` to ignore specific rules or paths.",
+          "section": "ansible-vs-other-tools"
+        }
+      ],
+      "exercises": [
+        {
+          "name": "My First Task",
+          "topic": "Tasks",
+          "exerciseFile": "my_first_task.md",
+          "solutionFile": "solutions/my_first_task.md"
+        }
+      ]
     },
     {
       "slug": "argo",
@@ -9031,293 +9338,6 @@
           "topic": "Rollouts",
           "exerciseFile": "exercises/blue_green_rollout/exercise.md",
           "solutionFile": "exercises/blue_green_rollout/solution.md"
-        }
-      ]
-    },
-    {
-      "slug": "ansible",
-      "name": "Ansible",
-      "category": "automation",
-      "categoryName": "automation",
-      "color": "#EE0000",
-      "sections": [
-        {
-          "id": "ansible-exercises",
-          "title": "Ansible Exercises",
-          "questionCount": 0
-        },
-        {
-          "id": "ansible-self-assessment",
-          "title": "Ansible Self Assessment",
-          "questionCount": 48
-        },
-        {
-          "id": "ansible-vs-other-tools",
-          "title": "Ansible vs. Other Tools",
-          "questionCount": 2
-        }
-      ],
-      "questionCount": 50,
-      "exerciseCount": 1,
-      "totalItems": 51,
-      "questions": [
-        {
-          "question": "Describe each of the following components in Ansible, including the relationship between them:\r \r   * Task\r   * Inventory\t\r   * Module\r   * Play\r   * Playbook\r   * Role",
-          "answer": "Task – a call to a specific Ansible module\r\nModule – the actual unit of code executed by Ansible on your own host or a remote host. Modules are indexed by category (database, file, network, …) and also referred to as task plugins.\r\n\t\r\nInventory – An inventory file defines hosts and/or groups of hosts on which Ansible tasks executed upon. The inventory file can be in one of many formats, depending on the inventory plugins you have. The most common formats are INI and YAML.\r\n\r\nPlay – One or more tasks executed on a given host(s)\r\n\r\nPlaybook – One or more plays. Each play can be executed on the same or different hosts\r\n\r\nRole – Ansible roles allows you to group resources based on certain functionality/service such that they can be easily reused. In a role, you have directories for variables, defaults, files, templates, handlers, tasks, and metadata. You can then use the role by simply specifying it in your playbook.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "How Ansible is different from other automation tools? (e.g. Chef, Puppet, etc.)",
-          "answer": "Ansible is:\r\n\r\n* Agentless\r\n* Minimal run requirements (Python & SSH) and simple to use\r\n* Default mode is \"push\" (it supports also pull)\r\n* Focus on simpleness and ease-of-use",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "True or False? Ansible follows the mutable infrastructure paradigm",
-          "answer": "True. In immutable infrastructure approach, you'll replace infrastructure instead of modifying it.\r\nAnsible rather follows the mutable infrastructure paradigm where it allows you to change the configuration of different components, but this approach is not perfect and has its own disadvantages like \"configuration drift\" where different components may reach different state for different reasons.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "True or False? Ansible uses declarative style to describe the expected end state",
-          "answer": "False. It uses a procedural style.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What kind of automation you wouldn't do with Ansible and why?",
-          "answer": "While it's possible to provision resources with Ansible, some prefer to use tools that follow immutable infrastructure paradigm.\r\nAnsible doesn't saves state by default. So a task that creates 5 instances for example, when executed again will create additional 5 instances (unless\r\nadditional check is implemented or explicit names are provided) while other tools might check if 5 instances exist. If only 4 exist (by checking the state file for example), one additional instance will be created to reach the end goal of 5 instances.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "How do you list all modules and how can you see details on a specific module?",
-          "answer": "1. Ansible online docs\r\n2. `ansible-doc -l` for list of modules and `ansible-doc [module_name]` for detailed information on a specific module",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What is an inventory file and how do you define one?",
-          "answer": "An inventory file defines hosts and/or groups of hosts on which Ansible tasks executed upon.\r\n\r\nAn example of inventory file:\r\n\r\n```\r\n192.168.1.2\r\n192.168.1.3\r\n192.168.1.4\r\n\r\n[web_servers]\r\n190.40.2.20\r\n190.40.2.21\r\n190.40.2.22\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What is a dynamic inventory file? When you would use one?",
-          "answer": "A dynamic inventory file tracks hosts from one or more sources like cloud providers and CMDB systems.\r\n\r\nYou should use one when using external sources and especially when the hosts in your environment are being automatically\r\nspun up and shut down, without you tracking every change in these sources.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Modify the following task to use a variable instead of the value \"zlib\" and have \"zlib\" as the default in case the variable is not defined\r \r ```\r - name: Install a package\r   package:\r     name: \"zlib\"\r     state: present\r ```",
-          "answer": "```\r\n- name: Install a package\r\n  package:\r\n    name: \"{{ package_name|default('zlib') }}\"\r\n    state: present\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "How to make the variable \"use_var\" optional?\r \r ```\r - name: Install a package\r   package:\r     name: \"zlib\"\r     state: present\r     use: \"{{ use_var }}\"\r ```",
-          "answer": "With \"default(omit)\"\r\n```\r\n- name: Install a package\r\n  package:\r\n    name: \"zlib\"\r\n    state: present\r\n    use: \"{{ use_var|default(omit) }}\"\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What would be the result of the following play?",
-          "answer": "```\r\n---\r\n- name: Print information about my host\r\n  hosts: localhost\r\n  gather_facts: 'no'\r\n  tasks:\r\n      - name: Print hostname\r\n        debug:\r\n            msg: \"It's me, {{ ansible_hostname }}\"\r\n```\r\n\r\nWhen given a written code, always inspect it thoroughly. If your answer is “this will fail” then you are right. We are using a fact (ansible_hostname), which is a gathered piece of information from the host we are running on. But in this case, we disabled facts gathering (gather_facts: no) so the variable would be undefined which will result in failure.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "When the value '2017'' will be used in this case: `{{ lookup('env', 'BEST_YEAR') | default('2017', true) }}`?",
-          "answer": "when the environment variable 'BEST_YEAR' is empty or false.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "If the value of certain variable is 1, you would like to use the value \"one\", otherwise, use \"two\". How would you do it?",
-          "answer": "`{{ (certain_variable == 1) | ternary(\"one\", \"two\") }}`",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "The value of a certain variable you use is the string \"True\". You would like the value to be a boolean. How would you cast it?",
-          "answer": "`{{ some_string_var | bool }}`",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "You want to run Ansible playbook only on specific minor version of your OS, how would you achieve that?",
-          "answer": "Use the `ansible_distribution_version` fact combined with conditionals.\r\n\r\n**Example — run only on Ubuntu 22.04:**\r\n```yaml\r\n- hosts: all\r\n  tasks:\r\n    - name: Run only on Ubuntu 22.04\r\n      debug:\r\n        msg: \"This is Ubuntu 22.04\"\r\n      when:\r\n        - ansible_distribution == \"Ubuntu\"\r\n        - ansible_distribution_version is version('22.04', '==')\r\n```\r\n\r\n**Using the `version` filter:**\r\n```yaml\r\nwhen: ansible_distribution_version is version('22.04', '>=')\r\n```\r\nThe `version` filter supports operators: `==`, `!=`, `>=`, ``, `=')\r\n```\r\n\r\n**Alternative — limit at inventory level:**\r\n```ini\r\n[web_servers]\r\nhost1 ansible_host=10.0.0.1\r\nhost2 ansible_host=10.0.0.2\r\n\r\n[rhel9_servers:children]\r\nweb_servers\r\n\r\n[rhel9_servers:vars]\r\nansible_python_interpreter=/usr/bin/python3.9\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What the \"become\" directive used for in Ansible?",
-          "answer": "`become` is Ansible's privilege escalation system — it allows you to run tasks as a different user (typically `root`). It's the Ansible equivalent of `sudo`, `su`, or `sudo su -`.\r\n\r\n**Common usage:**\r\n```yaml\r\n- name: Install nginx\r\n  apt:\r\n    name: nginx\r\n    state: present\r\n  become: yes          # Escalate to root for this task\r\n\r\n- name: Restart nginx as specific user\r\n  service:\r\n    name: nginx\r\n    state: restarted\r\n  become: yes\r\n  become_user: www-data   # Become a specific user\r\n```\r\n\r\n**become at different levels:**\r\n| Level | Example | Scope |\r\n|-------|---------|-------|\r\n| Task | `become: yes` on a single task | That task only |\r\n| Play | `become: yes` under the play | All tasks in the play |\r\n| CLI | `ansible-playbook play.yml --become` | The entire run |\r\n| Inventory | `ansible_become=yes` in inventory | Per-host |\r\n\r\n**Other become directives:**\r\n- `become_method: sudo` (default), `su`, `doas`, `pbrun`, `runas`\r\n- `become_flags: '-H -S'` — additional flags passed to the become method\r\n- `become_ask_pass: true` — prompt for the become password\r\n\r\n**Security best practice:** Only use `become: yes` on tasks that actually need elevated privileges, not blanket on every task.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What are facts? How to see all the facts of a certain host?",
-          "answer": "Facts are system/host information that Ansible gathers automatically at the start of each play (unless `gather_facts: no` is set). They include details about the OS, network interfaces, CPU, memory, disks, IP addresses, etc.\r\n\r\n**Common facts:**\r\n```yaml\r\nansible_hostname       # Hostname\r\nansible_distribution   # Ubuntu, RHEL, Debian, etc.\r\nansible_distribution_version  # 22.04, 9.2, etc.\r\nansible_os_family      # Debian, RedHat, Windows\r\nansible_architecture   # x86_64, aarch64\r\nansible_default_ipv4.address  # Primary IP address\r\nansible_memtotal_mb    # Total memory in MB\r\nansible_processor_vcpus  # CPU count\r\n```\r\n\r\n**View all facts for a host:**\r\n```bash\r\n# Ad-hoc command\r\nansible  -m ansible.builtin.setup\r\n\r\n# For a specific host in a playbook\r\nansible  -m setup -i inventory\r\n\r\n# Filter to specific facts\r\nansible  -m setup -a \"filter=ansible_distribution*\"\r\n\r\n# In a playbook\r\n- name: Print all facts\r\n  debug:\r\n    var: ansible_facts\r\n```\r\n\r\n**Using facts in playbooks:**\r\n```yaml\r\n- name: Install package based on OS\r\n  apt:\r\n    name: nginx\r\n    state: present\r\n  when: ansible_os_family == \"Debian\"\r\n\r\n- name: Install on RHEL\r\n  dnf:\r\n    name: nginx\r\n    state: present\r\n  when: ansible_os_family == \"RedHat\"\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What would be the result of running the following task? How to fix it?\r \r ```\r - hosts: localhost\r   tasks:\r       - name: Install zlib\r         package:\r           name: zlib\r           state: present\r ```",
-          "answer": "The task will **fail** because installing packages requires root privileges, but `become: yes` is not set.\r\n\r\n**Error message:**\r\n```\r\nfatal: [localhost]: FAILED! => {\"changed\": false, \"msg\": \"You need to be root to perform this command.\"}\r\n```\r\n\r\n**Fix — add become:**\r\n```yaml\r\n- hosts: localhost\r\n  become: yes       # Escalate to root\r\n  tasks:\r\n      - name: Install zlib\r\n        package:\r\n          name: zlib\r\n          state: present\r\n```\r\n\r\n**Additional considerations:**\r\n- Use the generic `package` module (auto-detects package manager) or specific module (`apt`, `dnf`, `yum`)\r\n- The generic `package` module requires Python's `apt` or `dnf` bindings depending on the OS\r\n- If targeting multiple OS types, use `when` conditionals with specific package names",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Which Ansible best practices are you familiar with?. Name at least three",
-          "answer": "Key Ansible best practices:\r\n\r\n1. **Use meaningful names** — Every play, task, role, and variable should have a descriptive name. `- name: Install and configure nginx web server` is better than `- name: run task`.\r\n\r\n2. **Keep it idempotent** — Running the same playbook twice should produce the same result. Use modules like `lineinfile`, `template`, `copy` which are naturally idempotent. Avoid raw `command`/`shell` unless absolutely necessary.\r\n\r\n3. **Use roles to organize** — Group related tasks, handlers, variables, templates, and files into roles. A typical structure: `roles/webserver/{tasks,handlers,templates,vars,defaults,meta}/`.\r\n\r\n4. **Version control everything** — Store playbooks, roles, inventory, and requirements in Git. Never commit secrets (use `ansible-vault`).\r\n\r\n5. **Use `ansible-lint`** — Validate playbooks for errors, deprecated syntax, and style violations: `ansible-lint site.yml`.\r\n\r\n6. **Pin collection versions** — In `requirements.yml`, pin versions to avoid unexpected changes:\r\n   ```yaml\r\n   collections:\r\n     - name: community.general\r\n       version: \">=8.0.0,<9.0.0\"\r\n   ```\r\n\r\n7. **Use `check_mode` and `diff`** — Test before applying:\r\n   ```bash\r\n   ansible-playbook site.yml --check --diff\r\n   ```\r\n\r\n8. **Encrypt sensitive data** — Use `ansible-vault` for secrets, passwords, API keys. Never store plaintext secrets in Git.\r\n\r\n9. **Limit scope with `--limit`** — Test on a subset before rolling out to all hosts.\r\n\r\n10. **Document dependencies** — Use `meta/main.yml` in roles to declare role dependencies.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Explain the directory layout of an Ansible role",
-          "answer": "An Ansible role follows a standard directory structure. You can generate it with:\r\n```bash\r\nansible-galaxy role init my_role\r\n```\r\n\r\n**Directory layout:**\r\n```\r\nmy_role/\r\n├── defaults/         # Default variables (lowest priority)\r\n│   └── main.yml\r\n├── files/            # Static files to copy to hosts\r\n├── handlers/         # Handlers triggered by 'notify'\r\n│   └── main.yml\r\n├── meta/             # Role metadata, dependencies, galaxy info\r\n│   └── main.yml\r\n├── tasks/            # Main list of tasks to execute\r\n│   └── main.yml\r\n├── templates/        # Jinja2 templates (.j2 files)\r\n├── tests/            # Test playbook and inventory\r\n│   ├── inventory\r\n│   └── test.yml\r\n├── vars/             # Role variables (higher priority than defaults)\r\n│   └── main.yml\r\n└── README.md         # Documentation\r\n```\r\n\r\n**Key directories explained:**\r\n| Directory | Purpose |\r\n|-----------|---------|\r\n| `tasks/` | Contains the list of tasks. `main.yml` is the entry point. Can include other task files. |\r\n| `defaults/` | Default values for variables. Overridden by any other variable source. |\r\n| `vars/` | Role variables. Higher priority than defaults but lower than playbook/extra vars. |\r\n| `handlers/` | Special tasks triggered by `notify` (e.g., restart a service after config change). |\r\n| `templates/` | Jinja2 templates that get rendered with variables and copied to hosts. |\r\n| `meta/` | Galaxy metadata (author, license, platform) and role dependencies. |\r\n| `files/` | Static files (scripts, configs) to be copied as-is. |\r\n\r\nNot all directories are required — only `tasks/` is mandatory for a minimal role.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What 'blocks' are used for in Ansible?",
-          "answer": "Blocks group multiple tasks together so you can apply common directives (error handling, conditionals, privilege escalation, tags) to all of them at once.\r\n\r\n**Key use cases:**\r\n\r\n**1. Error handling with `rescue` and `always`:**\r\n```yaml\r\n- block:\r\n    - name: Attempt risky operation\r\n      command: /usr/bin/make --jobs=4\r\n    - name: Run post-build script\r\n      command: /usr/bin/post-build.sh\r\n  rescue:\r\n    - name: Run if ANY task in the block fails\r\n      debug:\r\n        msg: \"Build failed — cleaning up\"\r\n    - name: Send alert\r\n      uri:\r\n        url: https://alerts.example.com/webhook\r\n        method: POST\r\n  always:\r\n    - name: This always runs (cleanup, logging)\r\n      command: /usr/bin/cleanup.sh\r\n```\r\n\r\n**2. Apply conditionals to a group of tasks:**\r\n```yaml\r\n- block:\r\n    - name: Install apache\r\n      apt:\r\n        name: apache2\r\n    - name: Start apache\r\n      service:\r\n        name: apache2\r\n        state: started\r\n  when: ansible_os_family == \"Debian\"\r\n  become: yes\r\n```\r\n\r\n**3. Common `become` or `tags`:**\r\n```yaml\r\n- block:\r\n    - name: Copy config\r\n      template:\r\n        src: nginx.conf.j2\r\n        dest: /etc/nginx/nginx.conf\r\n    - name: Restart nginx\r\n      service:\r\n        name: nginx\r\n        state: restarted\r\n  become: yes\r\n  tags:\r\n    - nginx\r\n    - config\r\n```\r\n\r\n**Block semantics:**\r\n- `block:` — The tasks to execute\r\n- `rescue:` — Runs only if a task in the block fails (like `except` in Python)\r\n- `always:` — Always runs, success or failure (like `finally` in Python)",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "How do you handle errors in Ansible?",
-          "answer": "Ansible provides several mechanisms for error handling:\r\n\r\n**1. `ignore_errors: yes`** — Continue execution even if this task fails:\r\n```yaml\r\n- name: This might fail, that's OK\r\n  command: /bin/false\r\n  ignore_errors: yes\r\n```\r\n\r\n**2. `failed_when`** — Define custom failure conditions:\r\n```yaml\r\n- name: Run a script\r\n  command: /opt/scripts/backup.sh\r\n  register: result\r\n  failed_when:\r\n    - result.rc != 0\r\n    - \"'ERROR' in result.stderr\"\r\n```\r\n\r\n**3. `block/rescue/always`** — Structured error handling:\r\n```yaml\r\n- block:\r\n    - name: Try this\r\n      command: /bin/false\r\n  rescue:\r\n    - name: If block fails, do this\r\n      debug:\r\n        msg: \"Recovering from failure\"\r\n  always:\r\n    - name: Always cleanup\r\n      file:\r\n        path: /tmp/lock\r\n        state: absent\r\n```\r\n\r\n**4. `any_errors_fatal: true`** — Abort the entire play for all hosts if any host fails:\r\n```yaml\r\n- hosts: all\r\n  any_errors_fatal: true\r\n  tasks:\r\n    - name: If this fails on any one host, stop everything\r\n      ...\r\n```\r\n\r\n**5. `max_fail_percentage`** — Abort if more than X% of hosts fail:\r\n```yaml\r\n- hosts: webservers\r\n  max_fail_percentage: 30\r\n  tasks: ...\r\n```\r\n\r\n**6. `changed_when`** — Control whether a task reports as \"changed\":\r\n```yaml\r\n- name: Always report OK\r\n  command: /usr/bin/healthcheck.sh\r\n  changed_when: false\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "You would like to run a certain command if a task fails. How would you achieve that?",
-          "answer": "Use `block/rescue` — the standard way to run recovery tasks on failure:\r\n\r\n```yaml\r\n- name: Safe deployment\r\n  block:\r\n    - name: Pull new Docker image\r\n      command: docker pull myapp:latest\r\n    - name: Restart container\r\n      command: docker-compose up -d\r\n  rescue:\r\n    - name: Send alert on failure\r\n      uri:\r\n        url: https://hooks.slack.com/services/xxx\r\n        method: POST\r\n        body: '{\"text\": \"Deploy failed!\"}'\r\n```\r\n\r\n**Alternative approaches:**\r\n\r\n**Using `register` + conditional recovery:**\r\n```yaml\r\n- name: Attempt deployment\r\n  command: /opt/deploy.sh\r\n  register: deploy_result\r\n  ignore_errors: yes\r\n\r\n- name: Rollback on failure\r\n  command: /opt/rollback.sh\r\n  when: deploy_result is failed\r\n```\r\n\r\n**Using handlers for failure cleanup:**\r\n```yaml\r\n- name: Deploy app\r\n  command: /opt/deploy.sh\r\n  notify: cleanup on failure\r\n  ignore_errors: yes\r\n\r\nhandlers:\r\n  - name: cleanup on failure\r\n    command: rm -rf /tmp/deploy-staging/*\r\n    listen: cleanup on failure\r\n```\r\n\r\nThe `block/rescue` approach is preferred because:\r\n- Tasks in `rescue` only run on failure (clear intent)\r\n- You can chain multiple rescue tasks\r\n- `always` block runs regardless of success/failure",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Write a playbook to install ‘zlib’ and ‘vim’ on all hosts if the file ‘/tmp/mario’ exists on the system.",
-          "answer": "```\r\n---\r\n- hosts: all\r\n  vars:\r\n      mario_file: /tmp/mario\r\n      package_list:\r\n          - 'zlib'\r\n          - 'vim'\r\n  tasks:\r\n      - name: Check for mario file\r\n        stat:\r\n            path: \"{{ mario_file }}\"\r\n        register: mario_f\r\n\r\n      - name: Install zlib and vim if mario file exists\r\n        become: \"yes\"\r\n        package:\r\n            name: \"{{ item }}\"\r\n            state: present\r\n        with_items: \"{{ package_list }}\"\r\n        when: mario_f.stat.exists\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Write a single task that verifies all the files in files_list variable exist on the host",
-          "answer": "```\r\n- name: Ensure all files exist\r\n  assert:\r\n    that:\r\n      - item.stat.exists\r\n  loop: \"{{ files_list }}\"\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Write a playbook to deploy the file ‘/tmp/system_info’ on all hosts except for controllers group, with the following content",
-          "answer": "```\r\n  I'm  and my operating system is \r\n  ```\r\n\r\n  Replace  and   with the actual data for the specific host you are running on\r\n\r\nThe playbook to deploy the system_info file\r\n\r\n```\r\n---\r\n- name: Deploy /tmp/system_info file\r\n  hosts: all:!controllers\r\n  tasks:\r\n      - name: Deploy /tmp/system_info\r\n        template:\r\n            src: system_info.j2\r\n            dest: /tmp/system_info\r\n```\r\n\r\nThe content of the system_info.j2 template\r\n\r\n```\r\n# {{ ansible_managed }}\r\nI'm {{ ansible_hostname }} and my operating system is {{ ansible_distribution }\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "The variable 'whoami' defined in the following places:\r \r   * role defaults -> whoami: mario\r   * extra vars (variables you pass to Ansible CLI with -e) -> whoami: toad\r   * host facts -> whoami: luigi\r   * inventory variables (doesn’t matter which type) -> whoami: browser\r \r According to variable precedence, which one will be used?",
-          "answer": "The right answer is ‘toad’.\r\n\r\nVariable precedence is about how variables override each other when they set in different locations. If you didn’t experience it so far I’m sure at some point you will, which makes it a useful topic to be aware of.\r\n\r\nIn the context of our question, the order will be extra vars (always override any other variable) -> host facts -> inventory variables -> role defaults (the weakest).\r\n\r\nHere is the order of precedence from least to greatest (the last listed variables winning prioritization):\r\n\r\n1. command line values (eg “-u user”)\r\n2. role defaults [[1\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id15)\r\n3. inventory file or script group vars [[2\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id16)\r\n4. inventory group_vars/all [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n5. playbook group_vars/all [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n6. inventory group_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n7. playbook group_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n8. inventory file or script host vars [[2\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id16)\r\n9. inventory host_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n10. playbook host_vars/* [[3\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id17)\r\n11. host facts / cached set_facts [[4\\]](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#id18)\r\n12. play vars\r\n13. play vars_prompt\r\n14. play vars_files\r\n15. role vars (defined in role/vars/main.yml)\r\n16. block vars (only for tasks in block)\r\n17. task vars (only for the task)\r\n18. include_vars\r\n19. set_facts / registered vars\r\n20. role (and include_role) params\r\n21. include params\r\n22. extra vars (always win precedence)\r\n\r\nA full list can be found at  [PlayBook Variables](https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#ansible-variable-precedence) . Also, note there is a significant difference between Ansible 1.x and 2.x.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "For each of the following statements determine if it’s true or false:\r \r   * A module is a collection of tasks\r   * It’s better to use shell or command instead of a specific module\r   * Host facts override play variables\r   * A role might include the following: vars, meta, and handlers\r   * Dynamic inventory is generated by extracting information from external sources\r   * It’s a best practice to use indentation of 2 spaces instead of 4\r   * ‘notify’ used to trigger handlers\r   * This “hosts: all:!controllers” means ‘run only on controllers group hosts",
-          "answer": "| Statement | True/False | Explanation |\r\n|-----------|------------|-------------|\r\n| A module is a collection of tasks | **False** | A module is a single unit of code (e.g., `apt`, `copy`, `service`). A **play** is a collection of tasks. |\r\n| It’s better to use shell or command instead of a specific module | **False** | Use specific modules whenever possible — they’re idempotent, handle errors better, and report meaningful “changed” status. `shell`/`command` should be a last resort. |\r\n| Host facts override play variables | **False** | Play variables override host facts. Variable precedence: extra vars > play vars > host facts > inventory vars > role defaults. |\r\n| A role might include the following: vars, meta, and handlers | **True** | A role can include `vars/`, `meta/`, `handlers/`, plus `tasks/`, `defaults/`, `templates/`, and `files/`. |\r\n| Dynamic inventory is generated by extracting information from external sources | **True** | Dynamic inventory scripts/plugins query cloud providers (AWS, GCP, Azure), CMDBs, or other sources to build the inventory at runtime. |\r\n| It’s a best practice to use indentation of 2 spaces instead of 4 | **True** | YAML convention uses 2 spaces for indentation. Ansible playbooks follow this standard. |\r\n| ‘notify’ used to trigger handlers | **True** | `notify` tells Ansible to run a handler (e.g., restart a service) if the task reports “changed”. Handlers run once at the end of the play, even if notified multiple times. |\r\n| This “hosts: all:!controllers” means ‘run only on controllers group hosts | **False** | The `!` means EXCLUDE. `all:!controllers` runs on ALL hosts EXCEPT those in the `controllers` group. |",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Explain the Difference between Forks and Serial & Throttle.",
-          "answer": "`Serial` is like running the playbook for each host in turn, waiting for completion of the complete playbook before moving on to the next host. `forks`=1 means run the first task in a play on one host before running the same task on the next host, so the first task will be run for each host before the next task is touched. Default fork is 5 in ansible.\r\n\r\n```\r\n[defaults]\r\nforks = 30\r\n```\r\n\r\n```\r\n- hosts: webservers\r\n  serial: 1\r\n  tasks:\r\n    - name: ...\r\n```\r\n\r\nAnsible also supports `throttle` This keyword limits the number of workers up to the maximum set via the forks setting or serial. This can be useful in restricting tasks that may be CPU-intensive or interact with a rate-limiting API\r\n\r\n```\r\ntasks:\r\n- command: /path/to/cpu_intensive_command\r\n  throttle: 1\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What is ansible-pull? How is it different from how ansible-playbook works?",
-          "answer": "`ansible-pull` inverts Ansible's default push architecture: instead of the control node pushing configurations to managed hosts, each host pulls configurations from a Git repository and applies them locally.\r\n\r\n**ansible-playbook (Push — default):**\r\n```\r\nControl Node ──push──> Host A\r\n              ──push──> Host B\r\n              ──push──> Host C\r\n```\r\n```bash\r\nansible-playbook -i inventory site.yml\r\n```\r\n\r\n**ansible-pull (Pull — inverted):**\r\n```\r\nGit Repo > /var/log/ansible-pull.log 2>&1\r\n```\r\n\r\n**Key differences:**\r\n| | ansible-playbook | ansible-pull |\r\n|---|---|---|\r\n| Direction | Push (control → hosts) | Pull (hosts → git) |\r\n| Initiator | Operator | Cron/systemd timer on host |\r\n| Inventory | Defined centrally | Typically `localhost,` |\r\n| Use case | Operator-driven changes | Auto-bootstrap, auto-heal |",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What is Ansible Vault?",
-          "answer": "Ansible Vault encrypts sensitive data (passwords, API keys, SSH keys, certificates) so they can be safely stored in version control alongside your playbooks.\r\n\r\n**Common operations:**\r\n```bash\r\n# Create a new encrypted file\r\nansible-vault create secrets.yml\r\n\r\n# Edit an encrypted file\r\nansible-vault edit secrets.yml\r\n\r\n# Encrypt an existing file\r\nansible-vault encrypt vars/production.yml\r\n\r\n# Decrypt (remove encryption)\r\nansible-vault decrypt vars/production.yml\r\n\r\n# View without editing\r\nansible-vault view secrets.yml\r\n\r\n# Change password\r\nansible-vault rekey secrets.yml\r\n```\r\n\r\n**Using encrypted variables in playbooks:**\r\n```yaml\r\n# secrets.yml (encrypted)\r\ndb_password: \"super_secret_password\"\r\napi_key: \"sk-1234567890\"\r\n\r\n# playbook.yml\r\n- hosts: databases\r\n  vars_files:\r\n    - secrets.yml\r\n  tasks:\r\n    - name: Configure database\r\n      mysql_user:\r\n        name: app_user\r\n        password: \"{{ db_password }}\"\r\n```\r\n\r\n**Running playbooks with Vault:**\r\n```bash\r\n# Prompt for password\r\nansible-playbook site.yml --ask-vault-pass\r\n\r\n# Password from file (CI/CD)\r\nansible-playbook site.yml --vault-password-file .vault-pass\r\n\r\n# Password from environment variable\r\necho \"$VAULT_PASSWORD\" > /tmp/vault-pass\r\nansible-playbook site.yml --vault-password-file /tmp/vault-pass\r\n```\r\n\r\n**Best practices:**\r\n- Encrypt `vars/` files, NOT playbooks themselves\r\n- Use a `.vault-pass` file that is in `.gitignore` for local dev\r\n- In CI/CD, store vault password as a secret (GitHub Secrets, GitLab CI Variables)\r\n- Use `--vault-id` for multiple vault passwords (dev/prod)",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Demonstrate each of the following with Ansible:\r \r   * Conditionals\r   * Loops",
-          "answer": "**Conditionals:**\r\n\r\n```yaml\r\n# Simple when\r\n- name: Install apache on Debian only\r\n  apt:\r\n    name: apache2\r\n    state: present\r\n  when: ansible_os_family == \"Debian\"\r\n\r\n# Multiple conditions (AND)\r\n- name: Run only on production web servers\r\n  debug:\r\n    msg: \"Production web server\"\r\n  when:\r\n    - inventory_hostname in groups['web_servers']\r\n    - env == \"production\"\r\n\r\n# OR condition\r\n- name: Install on Ubuntu OR CentOS\r\n  package:\r\n    name: nginx\r\n    state: present\r\n  when: ansible_distribution == \"Ubuntu\" or ansible_distribution == \"CentOS\"\r\n\r\n# Based on registered variable\r\n- name: Check if file exists\r\n  stat:\r\n    path: /etc/myapp/config.yml\r\n  register: config_file\r\n\r\n- name: Copy default config if missing\r\n  copy:\r\n    src: default-config.yml\r\n    dest: /etc/myapp/config.yml\r\n  when: not config_file.stat.exists\r\n\r\n# Ternary\r\n- name: Set environment-specific port\r\n  set_fact:\r\n    app_port: \"{{ (env == 'production') | ternary(443, 8080) }}\"\r\n```\r\n\r\n**Loops:**\r\n\r\n```yaml\r\n# loop (Recommended — replaces with_items)\r\n- name: Install multiple packages\r\n  apt:\r\n    name: \"{{ item }}\"\r\n    state: present\r\n  loop:\r\n    - nginx\r\n    - postgresql\r\n    - redis\r\n\r\n# loop with complex items (dict)\r\n- name: Create users\r\n  user:\r\n    name: \"{{ item.username }}\"\r\n    groups: \"{{ item.groups }}\"\r\n    state: present\r\n  loop:\r\n    - { username: 'alice', groups: 'developers' }\r\n    - { username: 'bob', groups: 'developers,admin' }\r\n\r\n# loop + when (per-item conditional)\r\n- name: Install packages except on dev\r\n  apt:\r\n    name: \"{{ item }}\"\r\n    state: present\r\n  loop:\r\n    - nginx\r\n    - postgresql\r\n  when: env != \"dev\"\r\n\r\n# loop_control (label, index, pause)\r\n- name: Process items with index\r\n  debug:\r\n    msg: \"{{ index }}: {{ item }}\"\r\n  loop:\r\n    - foo\r\n    - bar\r\n  loop_control:\r\n    index_var: index\r\n    label: \"{{ item }}\"    # Show this in output instead of full dict\r\n\r\n# until (retry loop)\r\n- name: Wait for service to be ready\r\n  uri:\r\n    url: http://localhost:8080/health\r\n  register: result\r\n  until: result.status == 200\r\n  retries: 12\r\n  delay: 10\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What are filters? Do you have experience with writing filters?",
-          "answer": "Filters are Jinja2 functions that transform data in Ansible templates and playbooks. They're applied with the `|` pipe operator.\r\n\r\n**Common built-in filters:**\r\n\r\n```yaml\r\n# Default values\r\n\"{{ some_var | default('fallback') }}\"\r\n\"{{ some_var | default(omit) }}\"          # Omit parameter entirely if undefined\r\n\r\n# Data manipulation\r\n\"{{ [1, 2, 3, 2] | unique }}\"             # [1, 2, 3]\r\n\"{{ [1, 2, 3] | min }}\"                   # 1\r\n\"{{ [1, 2, 3] | max }}\"                   # 3\r\n\"{{ {'a': 1, 'b': 2} | dict2items }}\"     # Convert dict to list of items\r\n\r\n# JSON/YAML\r\n\"{{ some_dict | to_nice_json }}\"\r\n\"{{ some_dict | to_nice_yaml }}\"\r\n\r\n# Type conversion\r\n\"{{ 'True' | bool }}\"                     # boolean True\r\n\"{{ 42 | string }}\"                       # \"42\"\r\n\"{{ some_var | type_debug }}\"             # Show data type\r\n\r\n# Path/file operations\r\n\"{{ '/etc/nginx/nginx.conf' | basename }}\"  # nginx.conf\r\n\"{{ '/etc/nginx/nginx.conf' | dirname }}\"   # /etc/nginx\r\n\r\n# Version comparison\r\n\"{{ ansible_distribution_version is version('22.04', '>=') }}\"\r\n```\r\n\r\n**Writing custom filters:**\r\n\r\nCreate a `filter_plugins/` directory next to your playbook:\r\n```python\r\n# filter_plugins/custom_filters.py\r\ndef capitalize_string(s):\r\n    return s.capitalize()\r\n\r\ndef to_gigabytes(value_in_mb):\r\n    return round(value_in_mb / 1024, 2)\r\n\r\nclass FilterModule:\r\n    def filters(self):\r\n        return {\r\n            'capitalize': capitalize_string,\r\n            'to_gb': to_gigabytes,\r\n        }\r\n```\r\n\r\n**Usage in playbook:**\r\n```yaml\r\n- debug:\r\n    msg: \"{{ 'hello world' | capitalize }}\"    # \"Hello world\"\r\n- debug:\r\n    msg: \"{{ ansible_memtotal_mb | to_gb }} GB\"\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Write a filter to capitalize a string",
-          "answer": "```\r\ndef cap(self, string):\r\n    return string.capitalize()\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "You would like to run a task only if previous task changed anything. How would you achieve that?",
-          "answer": "Use `register` to capture the result, then check `is changed` in the next task's condition:\r\n\r\n```yaml\r\n- name: Update configuration file\r\n  template:\r\n    src: nginx.conf.j2\r\n    dest: /etc/nginx/nginx.conf\r\n  register: config_result\r\n\r\n- name: Restart nginx if config changed\r\n  service:\r\n    name: nginx\r\n    state: restarted\r\n  when: config_result is changed\r\n```\r\n\r\n**Alternative — using `notify`/handlers (preferred for service restarts):**\r\n```yaml\r\ntasks:\r\n  - name: Update nginx config\r\n    template:\r\n      src: nginx.conf.j2\r\n      dest: /etc/nginx/nginx.conf\r\n    notify: restart nginx    # Only triggers handler if task changed\r\n\r\nhandlers:\r\n  - name: restart nginx\r\n    service:\r\n      name: nginx\r\n      state: restarted\r\n```\r\n\r\n**Compare register vs. handlers:**\r\n| Approach | When to use |\r\n|----------|-------------|\r\n| `register` + `when: result is changed` | One-off downstream tasks, or when you need the result for multiple actions |\r\n| `notify` + `handlers` | Standard pattern for restarting/reloading services. Handlers run once at end of play even if notified multiple times. |\r\n\r\n**Check other task attributes:**\r\n```yaml\r\nwhen: result is failed      # Task failed\r\nwhen: result is succeeded   # Task succeeded\r\nwhen: result is skipped     # Task was skipped (via when)\r\nwhen: result.rc != 0        # Non-zero return code\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What are callback plugins? What can you achieve by using callback plugins?",
-          "answer": "Callback plugins control Ansible's output and enable integration with external systems. They hook into Ansible events (task start, task end, playbook complete, etc.).\r\n\r\n**Categories of callback plugins:**\r\n\r\n**1. Output formatting (stdout callbacks):**\r\n```bash\r\n# Change output style\r\nexport ANSIBLE_STDOUT_CALLBACK=yaml     # Structured YAML output\r\nexport ANSIBLE_STDOUT_CALLBACK=json     # JSON output\r\nexport ANSIBLE_STDOUT_CALLBACK=unixy    # Unix-tool style\r\n```\r\n\r\n**Available stdout callbacks:**\r\n- `default` — Standard output\r\n- `yaml` / `json` — Machine-readable\r\n- `minimal` — Only task name and result\r\n- `actionable` — Only show tasks that had \"changed\" or \"failed\"\r\n- `profile_tasks` — Show execution time per task\r\n- `timer` — Show total playbook duration\r\n\r\n**2. Notification/Integration callbacks:**\r\n```yaml\r\n# ansible.cfg\r\n[defaults]\r\ncallback_whitelist = profile_tasks, slack\r\n```\r\n- `slack` — Send playbook results to Slack\r\n- `log_plays` — Log every play to a file\r\n- `mail` — Send email on failure\r\n- `sumologic` — Send logs to SumoLogic\r\n- `grafana_annotations` — Create Grafana annotations on deploy\r\n\r\n**Custom callback plugin:**\r\n```python\r\n# callback_plugins/custom_notify.py\r\nfrom ansible.plugins.callback import CallbackBase\r\n\r\nclass CallbackModule(CallbackBase):\r\n    CALLBACK_VERSION = 2.0\r\n    CALLBACK_TYPE = 'notification'\r\n    CALLBACK_NAME = 'custom_notify'\r\n\r\n    def v2_playbook_on_stats(self, stats):\r\n        hosts = stats.processed.keys()\r\n        for host in hosts:\r\n            summary = stats.summarize(host)\r\n            print(f\"Host {host}: {summary}\")\r\n```\r\n\r\n**Common use case — performance profiling:**\r\n```bash\r\nansible-playbook site.yml -e ansible_callback=profile_tasks\r\n# Output:\r\n# ======\r\n# update apt cache ------------ 12.45s\r\n# install nginx --------------- 5.32s\r\n# configure nginx -------------- 0.89s\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What is the difference between `include_task` and `import_task`?",
-          "answer": "| Aspect | `include_tasks` | `import_tasks` |\r\n|--------|----------------|----------------|\r\n| **When processed** | Dynamically at runtime | Statically at parse time |\r\n| **Conditional application** | `when` applies to each included task individually | `when` applies to ALL imported tasks as a block |\r\n| **Loops** | Can use `loop` with include_tasks | Cannot loop over import_tasks |\r\n| **Tags** | Tags apply to each included task | Tags apply to all imported tasks |\r\n| **Performance** | Slightly slower (evaluated at runtime) | Slightly faster (evaluated once) |\r\n\r\n**Example — `import_tasks` (static):**\r\n```yaml\r\n- name: Import setup tasks\r\n  import_tasks: setup.yml\r\n  when: env == \"production\"\r\n  tags: setup\r\n```\r\nAll tasks in `setup.yml` get the `when` condition and `setup` tag applied as a group. The file must exist when the playbook is parsed.\r\n\r\n**Example — `include_tasks` (dynamic):**\r\n```yaml\r\n- name: Include OS-specific tasks\r\n  include_tasks: \"{{ ansible_os_family }}.yml\"\r\n\r\n- name: Loop over includes\r\n  include_tasks: per_user.yml\r\n  loop: \"{{ user_list }}\"\r\n  loop_control:\r\n    loop_var: username\r\n```\r\nThe filename can use variables. Can be looped. `when` applies per-task.\r\n\r\n**Rule of thumb:**\r\n- Use `import_tasks` for static, always-loaded task files (basic setup, common operations)\r\n- Use `include_tasks` when: filename depends on a variable, you need to loop, or you need per-task conditionals\r\n- Similarly: `import_playbook` vs. `include_role` (dynamic) vs. `import_role` (static)\r\n\r\n**Also note:** There's `import_playbook` (static, import entire playbooks) and `include_role`/`import_role` (dynamic/static role inclusion).",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "File '/tmp/exercise' includes the following content\r \r ```\r Goku = 9001\r Vegeta = 5200\r Trunks = 6000\r Gotenks = 32\r ```\r \r With one task, switch the content to:\r \r ```\r Goku = 9001\r Vegeta = 250\r Trunks = 40\r Gotenks = 32\r ```",
-          "answer": "```\r\n- name: Change saiyans levels\r\n  lineinfile:\r\n    dest: /tmp/exercise\r\n    regexp: \"{{ item.regexp }}\"\r\n    line: \"{{ item.line }}\"\r\n  with_items:\r\n    - { regexp: '^Vegeta', line: 'Vegeta = 250' }\r\n    - { regexp: '^Trunks', line: 'Trunks = 40' }\r\n    ...\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "True or False? By default, Ansible will execute all the tasks in play on a single host before proceeding to the next host",
-          "answer": "False. Ansible will execute a single task on all hosts before moving to the next task in a play. As for today, it uses 5 forks by default.\r\nThis behavior is described as \"strategy\" in Ansible and it's configurable.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What is a \"strategy\" in Ansible? What is the default strategy?",
-          "answer": "A strategy in Ansible describes how Ansible will execute the different tasks on the hosts. By default Ansible is using the \"Linear strategy\" which defines that each task will run on all hosts before proceeding to the next task.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What strategies are you familiar with in Ansible?",
-          "answer": "- Linear: the default strategy in Ansible. Run each task on all hosts before proceeding.\r\n  - Free: For each host, run all the tasks until the end of the play as soon as possible\r\n  - Debug: Run tasks in an interactive way",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What the serial keyword is used for?",
-          "answer": "It's used to specify the number (or percentage) of hosts to run the full play on, before moving to next number of hosts in the group.\r\n\r\nFor example:\r\n```\r\n- name: Some play\r\n  hosts: databases\r\n  serial: 4\r\n```\r\n\r\nIf your group has 8 hosts. It will run the whole play on 4 hosts and then the same play on another 4 hosts.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "How do you test your Ansible based projects?",
-          "answer": "A multi-layered testing approach for Ansible projects:\r\n\r\n**1. Static Analysis:**\r\n```bash\r\n# Lint playbooks\r\nansible-lint site.yml\r\n\r\n# Syntax check\r\nansible-playbook site.yml --syntax-check\r\n\r\n# Check mode (dry run)\r\nansible-playbook site.yml --check --diff\r\n```\r\n\r\n**2. Unit/Functional Testing with Molecule:**\r\n```bash\r\n# Install\r\npip install molecule molecule-plugins[docker]\r\n\r\n# Initialize test scenario\r\nmolecule init scenario -r my_role --driver-name docker\r\n\r\n# Test workflow\r\nmolecule lint         # Lint the role\r\nmolecule create       # Create test instances (Docker containers)\r\nmolecule converge     # Apply the role\r\nmolecule verify       # Run testinfra/ansible tests\r\nmolecule idempotence  # Run converge again — must show 0 changes\r\nmolecule destroy      # Clean up\r\nmolecule test         # Run all steps above in sequence\r\n```\r\n\r\n**Example `molecule/default/verify.yml`:**\r\n```yaml\r\n- name: Verify nginx is installed and running\r\n  hosts: all\r\n  tasks:\r\n    - name: Check nginx package\r\n      package_facts:\r\n        manager: auto\r\n    - name: Assert nginx is installed\r\n      assert:\r\n        that: \"'nginx' in ansible_facts.packages\"\r\n    - name: Check port 80 is listening\r\n      wait_for:\r\n        port: 80\r\n        timeout: 5\r\n```\r\n\r\n**3. Integration Testing:**\r\n- `testinfra` — Pytest plugin for infrastructure testing\r\n- `ansible-verify` — Run assertion playbooks after deployment\r\n\r\n**4. CI/CD Pipeline integration:**\r\n```yaml\r\n# .github/workflows/ansible-ci.yml\r\njobs:\r\n  test:\r\n    steps:\r\n      - uses: actions/checkout@v4\r\n      - run: pip install ansible ansible-lint molecule molecule-plugins[docker]\r\n      - run: ansible-lint site.yml\r\n      - run: cd roles/my_role && molecule test\r\n```\r\n\r\n**5. Secrets validation:**\r\n```bash\r\n# Ensure no plaintext secrets in code\r\ngit secrets --scan\r\ntrufflehog filesystem .\r\n```",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What is Molecule? How does it works?",
-          "answer": "It's used to rapidy develop and test Ansbile roles.  Molecule can be used to test Ansible roles against a varaitey of Linux Distros at the same time.  This testing ability helps instill confidence of the automation today and as time go on while a role is maintined.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "You run Ansible tests and you get \"idempotence test failed\". What does it mean? Why idempotence is important?",
-          "answer": "**\"Idempotence test failed\" means:** Running the same playbook twice produced different results. The second run reported `changed=1` (or more), meaning something was modified on the second pass when it should have been a no-op.\r\n\r\n**Why it happens:**\r\n- Using `command`/`shell` modules that always report \"changed\" — these don't check state\r\n- Not using `creates`/`removes` with command modules\r\n- A template that generates different output each run (e.g., includes a timestamp)\r\n- A task that's reading mutable state (e.g., checking a dynamically changing value)\r\n\r\n**How to fix:**\r\n```yaml\r\n# ❌ Always reports changed\r\n- name: Run script\r\n  command: /opt/scripts/init.sh\r\n\r\n# ✅ Only runs if output file doesn't exist\r\n- name: Run script\r\n  command:\r\n    cmd: /opt/scripts/init.sh\r\n    creates: /opt/scripts/.initialized\r\n\r\n# ✅ Use changed_when\r\n- name: Run health check\r\n  command: /opt/health-check.sh\r\n  register: health\r\n  changed_when: false\r\n```\r\n\r\n**Why idempotence is important:**\r\n1. **Predictability** — You know exactly what changed and when. Running the same config 10 times shouldn't produce 10 different results.\r\n2. **Confidence** — If `changed=0` on the second run, you're confident the system is in the expected state. If `changed>0`, something is drifting.\r\n3. **Audit trails** — Changes map to specific playbook runs. Hard to audit when every run reports changes.\r\n4. **Reduced risk** — Idempotent playbooks are safe to re-run. Non-idempotent ones might break things on subsequent runs.\r\n5. **Compliance** — Proves configuration management is actually managing configuration, not just running scripts.\r\n\r\n**Molecule's idempotence check:**\r\n```bash\r\nmolecule idempotence   # Runs converge twice, second run must show changed=0\r\n```\r\nIf the second converge shows ANY changes, the idempotence test fails. This catches non-idempotent tasks before they reach production.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "How to find out the data type of a certain variable in one of the playbooks?",
-          "answer": "\"{{ some_var | type_debug }}\"",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "What are collections in Ansible?",
-          "answer": "Ansible Collections are a way to package and distribute modules, roles, plugins, and documentation in a structured format. They help organize and distribute automation code efficiently, especially for complex environments.",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Why Use Ansible Collections?",
-          "answer": "- Modular and reusable components\r\n  - Simplifies management of custom and third-party modules\r\n  - Provides a standardized way to distribute automation content\r\n  - Helps in version control and dependency management",
-          "section": "ansible-self-assessment"
-        },
-        {
-          "question": "Compare Ansible with Terraform. When would you use each?",
-          "answer": "| | Ansible | Terraform |\r\n|---|---|---|\r\n| **Primary use** | Configuration management, app deployment | Infrastructure provisioning |\r\n| **Paradigm** | Procedural (execute tasks in order) | Declarative (define desired state) |\r\n| **State management** | Stateless by default | Maintains state file (terraform.tfstate) |\r\n| **Infra lifecycle** | No native destroy — you write cleanup tasks | Full lifecycle: plan, apply, destroy |\r\n| **Agent** | Agentless (SSH/WinRM) | Agentless (API calls) |\r\n| **Idempotency** | Module-level (most modules are idempotent) | Architecture-level (compares desired vs. actual state) |\r\n| **Language** | YAML (playbooks) | HCL (HashiCorp Configuration Language) |\r\n\r\n**When to use Ansible:**\r\n- Configuring servers post-provisioning (install packages, configure services, deploy apps)\r\n- Day-2 operations (patching, updating, ongoing maintenance)\r\n- Immutable image building (Packer + Ansible provisioner)\r\n- Simple orchestration (restart services in order, run DB migrations)\r\n\r\n**When to use Terraform:**\r\n- Provisioning cloud infrastructure (VMs, VPCs, databases, load balancers, DNS)\r\n- Managing infrastructure lifecycle (create, update, destroy with dependency tracking)\r\n- Multi-cloud infrastructure (Terraform works across AWS, GCP, Azure, etc.)\r\n- Infrastructure that needs state tracking (Terraform knows if a resource was created outside of it)\r\n\r\n**They complement each other (common pattern):**\r\n```\r\nTerraform provisions infrastructure → Ansible configures it\r\n```\r\n```bash\r\n# Terraform provisions the VM and outputs its IP\r\nterraform apply -auto-approve\r\n\r\n# Ansible configures the VM using the IP from Terraform\r\nansible-playbook -i \"$(terraform output -raw vm_ip),\" site.yml\r\n```",
-          "section": "ansible-vs-other-tools"
-        },
-        {
-          "question": "What are Ansible Execution Environments (EE)? What is Ansible Navigator?",
-          "answer": "**Ansible Execution Environments (EE)** are container images that bundle Ansible Core, collections, Python dependencies, and system libraries into a single, consistent runtime. They replace the traditional approach of installing everything on a control node.\r\n\r\n**Why EEs exist:**\r\n- **Dependency hell** — Different projects need different Python/Ansible versions and collections\r\n- **Consistency** — \"Works on my control node\" → \"Works everywhere\" (same container image)\r\n- **Security** — Containerized execution, no Python packages installed on the control host\r\n- **AWX/AAP** — Red Hat Ansible Automation Platform uses EEs natively\r\n\r\n**Building an EE:**\r\n```yaml\r\n# execution-environment.yml\r\n---\r\nversion: 3\r\ndependencies:\r\n  galaxy: requirements.yml\r\n  python: requirements.txt\r\nimages:\r\n  base_image:\r\n    name: registry.redhat.io/ansible-automation-platform-24/ee-minimal-rhel9:latest\r\n```\r\n```bash\r\nansible-builder build -t my-ee:latest\r\n```\r\n\r\n**Ansible Navigator** is the next-generation CLI that replaces `ansible-playbook`, `ansible-doc`, `ansible-inventory` and consolidates them into one tool:\r\n```bash\r\n# Run a playbook inside an EE\r\nansible-navigator run site.yml --eei my-ee:latest\r\n\r\n# Browse inventory interactively\r\nansible-navigator inventory -i hosts.yml --eei my-ee:latest\r\n\r\n# Browse available collections\r\nansible-navigator collections --eei my-ee:latest\r\n\r\n# Interactive mode (TUI)\r\nansible-navigator\r\n```\r\n\r\n**Key Navigator features:**\r\n- TUI (Text-based User Interface) for browsing playbook results\r\n- Built-in lint with `ansible-lint`\r\n- Execution Environment integration out of the box\r\n- Playbook artifact generation (JSON log of each run)\r\n\r\nThis is the direction Ansible is heading: container-first, reproducible execution with a unified CLI.",
-          "section": "ansible-vs-other-tools"
-        }
-      ],
-      "exercises": [
-        {
-          "name": "My First Task",
-          "topic": "Tasks",
-          "exerciseFile": "my_first_task.md",
-          "solutionFile": "solutions/my_first_task.md"
         }
       ]
     },
@@ -9891,6 +9911,249 @@
       ]
     },
     {
+      "slug": "shell",
+      "name": "Shell",
+      "category": "programming",
+      "categoryName": "Programming & Scripting",
+      "color": "#4EAA25",
+      "sections": [
+        {
+          "id": "shell-scripting-exercises",
+          "title": "Shell Scripting Exercises",
+          "questionCount": 30
+        }
+      ],
+      "questionCount": 30,
+      "exerciseCount": 12,
+      "totalItems": 42,
+      "questions": [
+        {
+          "question": "What does this line in shell scripts means?: #!/bin/bash",
+          "answer": "`#!/bin/bash` is She-bang\r\n\r\n/bin/bash is the most common shell used as default shell for user login of the linux system. The shell’s name is an acronym for Bourne-again shell. Bash can execute the vast majority of scripts and thus is widely used because it has more features, is well developed and better syntax.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "True or False? When a certain command/line fails in a shell script, the shell script, by default, will exit and stop running",
+          "answer": "Depends on the language and settings used.\r\nIf the script is a bash script then this statement is true. When a script written in Bash fails to run a certain command it will keep running and will execute all other commands mentioned after the command which failed.\r\n\r\nMost of the time we might actually want the opposite to happen. In order to make Bash exist when a specific command fails, use 'set -e' in your script.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What do you tend to include in every script you write?",
+          "answer": "Few example:\r\n\r\n  * Comments on how to run it and/or what it does\r\n  * If a shell script, adding \"set -e\" since I want the script to exit if a certain command failed\r\n\r\nYou can have an entirely different answer. It's based only on your experience and preferences.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Today we have tools and technologies like Ansible, Puppet, Chef, ... Why would someone still use shell scripting?",
+          "answer": "* Speed\r\n  * Flexibility\r\n  * The module we need doesn't exist (perhaps a weak point because most CM technologies allow to use what is known as \"shell\" module)\r\n  * We are delivering the scripts to customers who don't have access to the public network and don't necessarily have Ansible installed on their systems.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to define a variable with the value \"Hello World\"?",
+          "answer": "`HW=\"Hello World`",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to define a variable with the value of the current date?",
+          "answer": "`DATE=$(date)`",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to print the first argument passed to a script?",
+          "answer": "`echo $1`",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Write a script to print \"yay\" unless an argument was passed and then print that argument",
+          "answer": "```\r\necho \"${1:-yay}\"\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What would be the output of the following script?\r \r ```\r #!/usr/bin/env bash\r NINJA_TURTLE=Donatello\r function the_best_ninja_turtle {\r         local NINJA_TURTLE=Michelangelo\r         echo $NINJA_TURTLE\r }\r NINJA_TURTLE=Raphael\r the_best_ninja_turtle\r ```",
+          "answer": "Michelangelo",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Explain what would be the result of each command:\r \r   * echo $0\r   * echo $?\r   * echo $$\r   * echo $#",
+          "answer": "These are special shell variables:\r\n| Variable | Meaning | Example |\r\n|----------|---------|---------|\r\n| `$0` | Name of the script/process | `./myscript.sh` |\r\n| `$?` | Exit code of the last command | `0` = success, non-zero = failure |\r\n| `$$` | Process ID (PID) of the current shell/script | `12345` |\r\n| `$#` | Number of arguments passed to the script | `3` |\r\n\r\n**Practical usage:**\r\n```bash\r\n#!/bin/bash\r\necho \"Running $0 with PID $$\"\r\necho \"You passed $# arguments\"\r\nsome_command\r\nif [ $? -ne 0 ]; then\r\n    echo \"some_command failed with exit code $?\"\r\nfi\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What is $@?",
+          "answer": "`$@` expands to all positional parameters (arguments) passed to a script or function, with each argument treated as a **separate quoted string**. It's the safest way to iterate over arguments.\r\n\r\n**Example:**\r\n```bash\r\n#!/bin/bash\r\nfor arg in \"$@\"; do\r\n    echo \"Arg: $arg\"\r\ndone\r\n# ./script.sh \"hello world\" foo  → Arg: hello world, Arg: foo\r\n```\r\n\r\n**`$@` vs `$*`:**\r\n| | `$@` | `$*` |\r\n|---|---|---|\r\n| Quoted | `\"$@\"` → `\"arg1\" \"arg2\" \"arg3\"` | `\"$*\"` → `\"arg1 arg2 arg3\"` (one string) |\r\n| Best for | Iterating arguments safely | Joining all args into one string |\r\n\r\n**Always use `\"$@\"` when iterating arguments** — it preserves spaces within arguments.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What is difference between $@ and $*?",
+          "answer": "`$@` is an array of all the arguments passed to the script\r\n`$*` is a single string of all the arguments passed to the script",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How do you get input from the user in shell scripts?",
+          "answer": "Using the keyword read so for example read x will wait for user input and will store it in the variable x.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to compare variables length?",
+          "answer": "```\r\nif [ ${#1} -ne ${#2} ]; then\r\n    ...\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Explain conditionals and demonstrate how to use them",
+          "answer": "Conditionals control script flow based on conditions.\r\n\r\n**if/elif/else:**\r\n```bash\r\nif [ \"$name\" = \"Todd\" ]; then\r\n    echo \"Hello Todd\"\r\nelif [ \"$name\" = \"root\" ]; then\r\n    echo \"Hello root\"\r\nelse\r\n    echo \"Who are you?\"\r\nfi\r\n```\r\n\r\n**Common test operators:**\r\n```bash\r\n# String comparisons\r\n[ \"$a\" = \"$b\" ]       # Equal\r\n[ \"$a\" != \"$b\" ]      # Not equal\r\n[ -z \"$a\" ]           # Is empty/zero length\r\n[ -n \"$a\" ]           # Is NOT empty\r\n\r\n# Numeric comparisons\r\n[ \"$a\" -eq \"$b\" ]     # Equal\r\n[ \"$a\" -ne \"$b\" ]     # Not equal\r\n[ \"$a\" -gt \"$b\" ]     # Greater than\r\n[ \"$a\" -lt \"$b\" ]     # Less than\r\n\r\n# File tests\r\n[ -f \"$file\" ]        # Is a regular file\r\n[ -d \"$dir\" ]         # Is a directory\r\n[ -x \"$script\" ]      # Is executable\r\n[ -e \"$path\" ]        # Exists\r\n```\r\n\r\n**Modern alternative — `[[ ]]` (preferred):**\r\n```bash\r\n# Supports regex, pattern matching, no word splitting\r\nif [[ $version =~ ^[0-9]+\\.[0-9]+$ ]]; then\r\n    echo \"Valid semver\"\r\nfi\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "In shell scripting, how to negate a conditional?",
+          "answer": "Use `!` before the condition:\r\n\r\n```bash\r\n# Negate with !\r\nif [ ! -f /etc/config ]; then\r\n    echo \"Config file missing\"\r\nfi\r\n\r\n# With [[ ]]\r\nif [[ ! $name = \"root\" ]]; then\r\n    echo \"You are not root\"\r\nfi\r\n\r\n# Negate command exit status\r\nif ! ping -c 1 google.com > /dev/null; then\r\n    echo \"No internet connection\"\r\nfi\r\n```\r\n\r\n**Common pattern — check if file doesn't exist:**\r\n```bash\r\n[ ! -f /etc/app.conf ] && echo \"No config found\" && exit 1\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "In shell scripting, how to check if a given argument is a number?",
+          "answer": "```\r\nregex='^[0-9]+$'\r\nif [[ ${var//*.} =~ $regex ]]; then\r\n...\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to perform arithmetic operations on numbers?",
+          "answer": "Three methods:\r\n\r\n```bash\r\n# 1. $(( )) — preferred, POSIX-compliant\r\nresult=$(( 10 + 5 ))      # 15\r\nresult=$(( 10 * 5 ))      # 50\r\nresult=$(( 10 / 3 ))      # 3 (integer division)\r\n\r\n# 2. let — builtin\r\nlet \"result = 10 + 5\"\r\n\r\n# 3. expr — external command (slower)\r\nresult=$(expr 10 + 5)\r\n```\r\n\r\n**Common operations:**\r\n```bash\r\ncount=$(( count + 1 ))    # Increment\r\n(( count++ ))             # Shorthand\r\nremainder=$(( 10 % 3 ))   # Modulo → 1\r\npower=$(( 2 ** 10 ))      # Exponentiation → 1024\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to check if a given number has 4 as a factor?",
+          "answer": "`if [ $(($1 % 4)) -eq 0 ]; then`",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What is a loop? What types of loops are you familiar with?",
+          "answer": "Loops repeat a block of code multiple times. Shell supports four loop types:\r\n\r\n| Type | Use case |\r\n|------|----------|\r\n| `for` | Iterate over a list of items |\r\n| `while` | Repeat while condition is true |\r\n| `until` | Repeat until condition becomes true |\r\n| `select` | Create interactive menus |\r\n\r\n**for — iterate over files/values:**\r\n```bash\r\nfor file in *.txt; do\r\n    echo \"Processing $file\"\r\ndone\r\n\r\nfor i in {1..5}; do\r\n    echo \"Iteration $i\"\r\ndone\r\n```\r\n\r\n**while — condition-based repetition:**\r\n```bash\r\ncount=1\r\nwhile [ $count -le 5 ]; do\r\n    echo \"Count: $count\"\r\n    ((count++))\r\ndone\r\n```\r\n\r\n**until — opposite of while:**\r\n```bash\r\nuntil ping -c 1 google.com; do\r\n    echo \"Waiting for network...\"\r\n    sleep 5\r\ndone\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Demonstrate how to use loops",
+          "answer": "```bash\r\n# for loop — iterate over list\r\nfor fruit in apple banana orange; do\r\n    echo \"Fruit: $fruit\"\r\ndone\r\n\r\n# for loop — C-style\r\nfor (( i=0; i<5; i++ )); do\r\n    echo \"i=$i\"\r\ndone\r\n\r\n# while loop — read file line by line\r\nwhile IFS= read -r line; do\r\n    echo \"Line: $line\"\r\ndone < /etc/hosts\r\n\r\n# while — infinite loop with break\r\nwhile true; do\r\n    read -p \"Enter name (or 'quit'): \" name\r\n    [[ $name = \"quit\" ]] && break\r\n    echo \"Hello $name\"\r\ndone\r\n\r\n# select — interactive menu\r\nselect option in \"Install\" \"Update\" \"Quit\"; do\r\n    case $option in\r\n        Install) echo \"Installing...\"; break ;;\r\n        Update)   echo \"Updating...\"; break ;;\r\n        Quit)     exit ;;\r\n    esac\r\ndone\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How do you debug shell scripts?",
+          "answer": "Answer depends on the language you are using for writing your scripts. If Bash is used for example then:\r\n\r\n  * Adding -x to the script I'm running in Bash\r\n  * Old good way of adding echo statements\r\n\r\nIf Python, then using pdb is very useful.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Running the following bash script, we don't get 2 as a result, why?\r \r ```\r x = 2\r echo $x\r ```",
+          "answer": "Should be `x=2`",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to extract everything after the last dot in a string?",
+          "answer": "`${var//*.}`",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "How to extract everything before the last dot in a string?",
+          "answer": "${var%.*}",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Generate 8 digit random number",
+          "answer": "shuf -i 9999999-99999999 -n 1",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "Can you give an example to some Bash best practices?",
+          "answer": "Essential Bash best practices for production scripts:\r\n\r\n1. **Start with `set -euo pipefail`:**\r\n```bash\r\n#!/bin/bash\r\nset -euo pipefail\r\n# -e: exit on any error\r\n# -u: error on undefined variables\r\n# -o pipefail: fail if any command in a pipe fails\r\n```\r\n\r\n2. **Quote variables to prevent word splitting:**\r\n```bash\r\n# ❌ Breaks if filename has spaces\r\nrm $file\r\n# ✅ Correct\r\nrm \"$file\"\r\n```\r\n\r\n3. **Use `$( )` instead of backticks:**\r\n```bash\r\n# ❌ Hard to nest and read\r\nfiles=`ls \\`pwd\\``\r\n# ✅ Clear and nestable\r\nfiles=$(ls \"$(pwd)\")\r\n```\r\n\r\n4. **Prefer `[[ ]]` over `[ ]`** for safer tests (Bash/Zsh).\r\n\r\n5. **Use meaningful variable names** (UPPERCASE for env vars, lowercase for local).\r\n\r\n6. **Check exit codes of critical commands:**\r\n```bash\r\nif ! command_that_might_fail; then\r\n    echo \"Fatal error\" >&2\r\n    exit 1\r\nfi\r\n```\r\n\r\n7. **Use `trap` for cleanup:**\r\n```bash\r\ntrap 'rm -f /tmp/lock' EXIT\r\n```\r\n\r\n8. **Validate input** — never trust user input without validation.\r\n\r\n9. **ShellCheck** — always lint with `shellcheck script.sh`.",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What is the ternary operator? How do you use it in bash?",
+          "answer": "A short way of using if/else. An example:\r\n\r\n```bash\r\n[[ $a = 1 ]] && b=\"yes, equal\" || b=\"nope\"\r\n```\r\n\r\n**Caveat:** The `&&`/`||` pattern is NOT a true ternary — if the first command succeeds but the second fails, the third runs anyway. For safety:\r\n```bash\r\n# Safer — use if/else for complex logic\r\nif [[ $a = 1 ]]; then b=\"yes\"; else b=\"no\"; fi\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What does the following code do and when would you use it?\r \r diff",
+          "answer": "It's called **process substitution** — `<(command)` creates a temporary file descriptor with the command's output, allowing you to pass it to commands like `diff` that expect file paths (not stdin).\r\n\r\n**When to use:** When a command needs file arguments but you want to compare command output without creating temporary files.\r\n\r\n**More examples:**\r\n```bash\r\n# Compare two command outputs\r\ndiff <(ls dir1) <(ls dir2)\r\n\r\n# Feed command output as a \"file\"\r\nwhile read line; do echo \"Got: $line\"; done < <(grep \"ERROR\" /var/log/app.log)\r\n```",
+          "section": "shell-scripting-exercises"
+        },
+        {
+          "question": "What are you using for testing shell scripts?",
+          "answer": "**Bats** (Bash Automated Testing System) is the most popular framework for testing shell scripts:\r\n\r\n```bash\r\n# test/my_script.bats\r\n#!/usr/bin/env bats\r\n\r\n@test \"script exits with 0\" {\r\n  run ./my_script.sh\r\n  [ \"$status\" -eq 0 ]\r\n}\r\n\r\n@test \"script outputs expected string\" {\r\n  run ./my_script.sh hello\r\n  [ \"$output\" = \"Hello, hello\" ]\r\n}\r\n```\r\n\r\n**ShellCheck** for static analysis:\r\n```bash\r\nshellcheck my_script.sh    # Catch bugs and anti-patterns\r\n```\r\n\r\n**Other testing tools:** shUnit2, bash_unit, roundup.",
+          "section": "shell-scripting-exercises"
+        }
+      ],
+      "exercises": [
+        {
+          "name": "Hello World",
+          "topic": "Variables",
+          "exerciseFile": "hello_world.md",
+          "solutionFile": "solutions/hello_world.md"
+        },
+        {
+          "name": "Basic date",
+          "topic": "Variables",
+          "exerciseFile": "basic_date.md",
+          "solutionFile": "solutions/basic_date.md"
+        },
+        {
+          "name": "Great Day",
+          "topic": "Variables",
+          "exerciseFile": "great_day.md",
+          "solutionFile": "solutions/great_day.md"
+        },
+        {
+          "name": "Factors",
+          "topic": "Arithmetic",
+          "exerciseFile": "factors.md",
+          "solutionFile": "solutions/factors.md"
+        },
+        {
+          "name": "Argument Check",
+          "topic": "Conditionals",
+          "exerciseFile": "argument_check.md",
+          "solutionFile": "solutions/argument_check.md"
+        },
+        {
+          "name": "Files Size",
+          "topic": "For Loops",
+          "exerciseFile": "files_size.md",
+          "solutionFile": "solutions/files_size.md"
+        },
+        {
+          "name": "Count Chars",
+          "topic": "Input + While Loops",
+          "exerciseFile": "count_chars.md",
+          "solutionFile": "solutions/count_chars.md"
+        },
+        {
+          "name": "Sum",
+          "topic": "Functions",
+          "exerciseFile": "sum.md",
+          "solutionFile": "solutions/sum.md"
+        },
+        {
+          "name": "Number of Arguments",
+          "topic": "Case Statement",
+          "exerciseFile": "num_of_args.md",
+          "solutionFile": "solutions/num_of_args.md"
+        },
+        {
+          "name": "Empty Files",
+          "topic": "Misc",
+          "exerciseFile": "empty_files.md",
+          "solutionFile": "solutions/empty_files.md"
+        },
+        {
+          "name": "Directories Comparison",
+          "topic": "Misc",
+          "exerciseFile": "directories_comparison.md",
+          "solutionFile": "solutions/directories_comparison.md"
+        },
+        {
+          "name": "It's alive!",
+          "topic": "Misc",
+          "exerciseFile": "host_status.md",
+          "solutionFile": "solutions/host_status.md"
+        }
+      ]
+    },
+    {
       "slug": "git",
       "name": "Git",
       "category": "tools",
@@ -10357,214 +10620,6 @@
       ]
     },
     {
-      "slug": "shell",
-      "name": "Shell",
-      "category": "programming",
-      "categoryName": "Programming & Scripting",
-      "color": "#4EAA25",
-      "sections": [
-        {
-          "id": "shell-scripting-exercises",
-          "title": "Shell Scripting Exercises",
-          "questionCount": 23
-        }
-      ],
-      "questionCount": 23,
-      "exerciseCount": 12,
-      "totalItems": 35,
-      "questions": [
-        {
-          "question": "What does this line in shell scripts means?: #!/bin/bash",
-          "answer": "`#!/bin/bash` is She-bang\r\n\r\n/bin/bash is the most common shell used as default shell for user login of the linux system. The shell’s name is an acronym for Bourne-again shell. Bash can execute the vast majority of scripts and thus is widely used because it has more features, is well developed and better syntax.",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "True or False? When a certain command/line fails in a shell script, the shell script, by default, will exit and stop running",
-          "answer": "Depends on the language and settings used.\r\nIf the script is a bash script then this statement is true. When a script written in Bash fails to run a certain command it will keep running and will execute all other commands mentioned after the command which failed.\r\n\r\nMost of the time we might actually want the opposite to happen. In order to make Bash exist when a specific command fails, use 'set -e' in your script.",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "What do you tend to include in every script you write?",
-          "answer": "Few example:\r\n\r\n  * Comments on how to run it and/or what it does\r\n  * If a shell script, adding \"set -e\" since I want the script to exit if a certain command failed\r\n\r\nYou can have an entirely different answer. It's based only on your experience and preferences.",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "Today we have tools and technologies like Ansible, Puppet, Chef, ... Why would someone still use shell scripting?",
-          "answer": "* Speed\r\n  * Flexibility\r\n  * The module we need doesn't exist (perhaps a weak point because most CM technologies allow to use what is known as \"shell\" module)\r\n  * We are delivering the scripts to customers who don't have access to the public network and don't necessarily have Ansible installed on their systems.",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to define a variable with the value \"Hello World\"?",
-          "answer": "`HW=\"Hello World`",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to define a variable with the value of the current date?",
-          "answer": "`DATE=$(date)`",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to print the first argument passed to a script?",
-          "answer": "`echo $1`",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "Write a script to print \"yay\" unless an argument was passed and then print that argument",
-          "answer": "```\r\necho \"${1:-yay}\"\r\n```",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "What would be the output of the following script?\r \r ```\r #!/usr/bin/env bash\r NINJA_TURTLE=Donatello\r function the_best_ninja_turtle {\r         local NINJA_TURTLE=Michelangelo\r         echo $NINJA_TURTLE\r }\r NINJA_TURTLE=Raphael\r the_best_ninja_turtle\r ```",
-          "answer": "Michelangelo",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "What is difference between $@ and $*?",
-          "answer": "`$@` is an array of all the arguments passed to the script\r\n`$*` is a single string of all the arguments passed to the script",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How do you get input from the user in shell scripts?",
-          "answer": "Using the keyword read so for example read x will wait for user input and will store it in the variable x.",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to compare variables length?",
-          "answer": "```\r\nif [ ${#1} -ne ${#2} ]; then\r\n    ...\r\n```",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "In shell scripting, how to check if a given argument is a number?",
-          "answer": "```\r\nregex='^[0-9]+$'\r\nif [[ ${var//*.} =~ $regex ]]; then\r\n...\r\n```",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to perform arithmetic operations on numbers?",
-          "answer": "One way: `$(( 1 + 2 ))`\r\nAnother way: `expr 1 + 2`",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to check if a given number has 4 as a factor?",
-          "answer": "`if [ $(($1 % 4)) -eq 0 ]; then`",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How do you debug shell scripts?",
-          "answer": "Answer depends on the language you are using for writing your scripts. If Bash is used for example then:\r\n\r\n  * Adding -x to the script I'm running in Bash\r\n  * Old good way of adding echo statements\r\n\r\nIf Python, then using pdb is very useful.",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "Running the following bash script, we don't get 2 as a result, why?\r \r ```\r x = 2\r echo $x\r ```",
-          "answer": "Should be `x=2`",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to extract everything after the last dot in a string?",
-          "answer": "`${var//*.}`",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "How to extract everything before the last dot in a string?",
-          "answer": "${var%.*}",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "Generate 8 digit random number",
-          "answer": "shuf -i 9999999-99999999 -n 1",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "What is the ternary operator? How do you use it in bash?",
-          "answer": "A short way of using if/else. An example:\r\n\r\n[[ $a = 1 ]] && b=\"yes, equal\" || b=\"nope\"",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "What does the following code do and when would you use it?\r \r diff",
-          "answer": "It is called 'process substitution'. It provides a way to pass the output of a command to another command when using a pipe | is not possible. It can be used when a command does not support STDIN or you need the output of multiple commands.\r\nhttps://superuser.com/a/1060002/167769",
-          "section": "shell-scripting-exercises"
-        },
-        {
-          "question": "What are you using for testing shell scripts?",
-          "answer": "bats",
-          "section": "shell-scripting-exercises"
-        }
-      ],
-      "exercises": [
-        {
-          "name": "Hello World",
-          "topic": "Variables",
-          "exerciseFile": "hello_world.md",
-          "solutionFile": "solutions/hello_world.md"
-        },
-        {
-          "name": "Basic date",
-          "topic": "Variables",
-          "exerciseFile": "basic_date.md",
-          "solutionFile": "solutions/basic_date.md"
-        },
-        {
-          "name": "Great Day",
-          "topic": "Variables",
-          "exerciseFile": "great_day.md",
-          "solutionFile": "solutions/great_day.md"
-        },
-        {
-          "name": "Factors",
-          "topic": "Arithmetic",
-          "exerciseFile": "factors.md",
-          "solutionFile": "solutions/factors.md"
-        },
-        {
-          "name": "Argument Check",
-          "topic": "Conditionals",
-          "exerciseFile": "argument_check.md",
-          "solutionFile": "solutions/argument_check.md"
-        },
-        {
-          "name": "Files Size",
-          "topic": "For Loops",
-          "exerciseFile": "files_size.md",
-          "solutionFile": "solutions/files_size.md"
-        },
-        {
-          "name": "Count Chars",
-          "topic": "Input + While Loops",
-          "exerciseFile": "count_chars.md",
-          "solutionFile": "solutions/count_chars.md"
-        },
-        {
-          "name": "Sum",
-          "topic": "Functions",
-          "exerciseFile": "sum.md",
-          "solutionFile": "solutions/sum.md"
-        },
-        {
-          "name": "Number of Arguments",
-          "topic": "Case Statement",
-          "exerciseFile": "num_of_args.md",
-          "solutionFile": "solutions/num_of_args.md"
-        },
-        {
-          "name": "Empty Files",
-          "topic": "Misc",
-          "exerciseFile": "empty_files.md",
-          "solutionFile": "solutions/empty_files.md"
-        },
-        {
-          "name": "Directories Comparison",
-          "topic": "Misc",
-          "exerciseFile": "directories_comparison.md",
-          "solutionFile": "solutions/directories_comparison.md"
-        },
-        {
-          "name": "It's alive!",
-          "topic": "Misc",
-          "exerciseFile": "host_status.md",
-          "solutionFile": "solutions/host_status.md"
-        }
-      ]
-    },
-    {
       "slug": "perl",
       "name": "Perl",
       "category": "programming",
@@ -10770,6 +10825,152 @@
       "exercises": []
     },
     {
+      "slug": "dns",
+      "name": "DNS",
+      "category": "network",
+      "categoryName": "Networking",
+      "color": "#E67E22",
+      "sections": [
+        {
+          "id": "dns-troubleshooting-tools",
+          "title": "DNS Troubleshooting & Tools",
+          "questionCount": 1
+        },
+        {
+          "id": "advanced-dns",
+          "title": "Advanced DNS",
+          "questionCount": 4
+        }
+      ],
+      "questionCount": 29,
+      "exerciseCount": 0,
+      "totalItems": 29,
+      "questions": [
+        {
+          "question": "What is DNS? What is it used for?",
+          "answer": "DNS (Domain Name Systems) is a protocol used for converting domain names into IP addresses.\r\ncomputer networking (at layer 3 of the OSP model) is done with IP addresses but for as humans it's hard to remember IP addresses, it's much easier to remember names. This why we need something such as DNS to convert any domain name we type into an IP address. You can think on DNS as a huge phonebook or database where each corresponding name has an IP."
+        },
+        {
+          "question": "What is DNS resolution?",
+          "answer": "DNS resolution is the process of converting a domain name (like `www.example.com`) into an IP address (like `93.184.216.34`) that computers use to route traffic. It works in reverse too — reverse DNS (PTR records) maps IP → domain name.\r\n\r\n**Two types:**\r\n| | Recursive | Iterative |\r\n|---|---|---|\r\n| **Who does the work** | DNS resolver | DNS resolver + client |\r\n| **Typical client** | End user's browser | DNS server to DNS server |\r\n| **Example** | Your ISP's resolver fully resolves google.com for you | A resolver asks root→TLD→authoritative step by step |"
+        },
+        {
+          "question": "What is a name server?",
+          "answer": "A server which is responsible for resolving DNS queries."
+        },
+        {
+          "question": "What is the resolution sequence of: www.site.com",
+          "answer": "It's resolved in this order:\r\n\r\n1) .\r\n2) .com\r\n3) site.com\r\n4) www.site.com"
+        },
+        {
+          "question": "What is a domain name registrar?",
+          "answer": "[Cloudflare](https://www.cloudflare.com/en-gb/learning/dns/glossary/what-is-a-domain-name-registrar): \"A domain name registrar provides domain name registrations to the general public. A common misconception is that registrars sell domain names; these domain names are actually owned by registries and can only be leased by users.\""
+        },
+        {
+          "question": "Given the following fqdn, www.blipblop.com, what is the root?",
+          "answer": "`.` is the root"
+        },
+        {
+          "question": "Given the following fqdn, www.blipblop.com, what is the top level domain?",
+          "answer": "`.com.` is the top level domain"
+        },
+        {
+          "question": "Given the following fqdn, www.blipblop.com, what is the second level domain?",
+          "answer": "`blipblop.com.` is the second level domain"
+        },
+        {
+          "question": "Given the following fqdn, www.blipblop.com, what is the domain?",
+          "answer": "`www.blipblop.com.` is the domain"
+        },
+        {
+          "question": "Describe DNS resolution workflow in high-level",
+          "answer": "In general the process is as follows:\r\n\r\n  * The user types an address in the web browser (some_site.com)\r\n  * The operating system gets a request from the browser to translate the address the user entered\r\n  * A query created to check if a local entry of the address exists in the system. In case it doesn't, the request is forwarded to the DNS resolver\r\n  * The Resolver is a server, usually configured by your ISP when you connect to the internet, that responsible for resolving your query by contacting other DNS servers\r\n  * The Resolver contacts the root nameserver (aka as .)\r\n  * The root nameserver either responds with the address you are looking for or it responds with the address of the relevant Top Level Domain DNS server (if your address ends with org then the org TLD)\r\n  * The Resolver then contacts the TLD DNS. TLD DNS might respond with the address you are looking for. If it doesn't has the information, it will provide the address of SLD DNS server\r\n  * SLD DNS server will reply with the address to the resolver\r\n  * The Resolver passes this information to the browser while your OS also stores this information in the cache\r\n  * The user cab browse the website with happiness and joy :D"
+        },
+        {
+          "question": "What is a DNS record?",
+          "answer": "A mapping between domain name and an IP address."
+        },
+        {
+          "question": "What types of DNS records are there?",
+          "answer": "Common DNS record types:\r\n\r\n| Type | Purpose | Example |\r\n|------|---------|---------|\r\n| **A** | Name → IPv4 address | `example.com. A 93.184.216.34` |\r\n| **AAAA** | Name → IPv6 address | `example.com. AAAA 2606:2800:220:1:248:1893:25c8:1946` |\r\n| **CNAME** | Alias → canonical name | `www.example.com. CNAME example.com.` |\r\n| **MX** | Mail server for domain | `example.com. MX 10 mail.example.com.` |\r\n| **NS** | Authoritative name servers | `example.com. NS ns1.example.com.` |\r\n| **PTR** | IP → name (reverse DNS) | `34.216.184.93.in-addr.arpa. PTR example.com.` |\r\n| **TXT** | Arbitrary text data | SPF, DKIM, domain verification |\r\n| **SOA** | Start of Authority — zone metadata | Serial number, refresh/retry timers |\r\n| **SRV** | Service location (host:port) | `_sip._tcp.example.com. SRV 10 60 5060 sip.example.com.` |\r\n| **CAA** | Certificate Authority Authorization | Which CAs can issue certs for this domain |\r\n\r\nMore types: [DNS Record Types](https://www.nslookup.io/learning/dns-record-types/)"
+        },
+        {
+          "question": "What is a A record?",
+          "answer": "A (Address): Maps a host name to an IPv4 address.\r\n\r\nWhen a computer has multiple adapter cards and IP addresses, it should have multiple address records."
+        },
+        {
+          "question": "What is a AAAA record?",
+          "answer": "An AAAA Record performs the same function as an A Record, but for an IPv6 Address."
+        },
+        {
+          "question": "What is a CNAME record?",
+          "answer": "CNAME: maps a hostname to another hostname.\r\n\r\nThe target should be a domain name which must have an A or AAAA record. Think of it as an alias record."
+        },
+        {
+          "question": "What is a PTR record?",
+          "answer": "While an A record points a domain name to an IP address, a PTR record does the opposite and resolves the IP address to a domain name."
+        },
+        {
+          "question": "What is a MX record?",
+          "answer": "MX (Mail Exchange) Specifies a mail exchange server for the domain, which allows mail to be delivered to the correct mail servers in the domain."
+        },
+        {
+          "question": "What is a NS record?",
+          "answer": "NS: name servers that can respond to DNS queries"
+        },
+        {
+          "question": "Explain DNS Records TTL",
+          "answer": "[varonis.com](https://www.varonis.com/blog/dns-ttl): \"DNS TTL (time to live) is a setting that tells the DNS resolver how long to cache a query before requesting a new one. The information gathered is then stored in the cache of the recursive or local resolver for the TTL before it reaches back out to collect new, updated details.\""
+        },
+        {
+          "question": "Is DNS using TCP or UDP?",
+          "answer": "DNS uses UDP port 53 for resolving queries either regular or reverse. DNS uses TCP for zone transfer."
+        },
+        {
+          "question": "True or False? DNS can be used for load balancing",
+          "answer": "True. DNS-based load balancing distributes traffic by returning different IP addresses for the same domain name. It's simple, doesn't require a dedicated load balancer, but has limitations — DNS caching means clients may use stale IPs, and it doesn't check server health.\r\n\r\n**How it works:**\r\n```\r\nexample.com. A 10.0.0.1   (server A)\r\nexample.com. A 10.0.0.2   (server B)\r\nexample.com. A 10.0.0.3   (server C)\r\n```\r\nThe DNS server rotates the order of responses, distributing traffic across servers."
+        },
+        {
+          "question": "Which techniques a DNS can use for load balancing?",
+          "answer": "There are several techniques that a DNS can use for load balancing, including:\r\n\r\n* Round-robin DNS\r\n\r\n* Weighted round-robin DNS\r\n\r\n* Least connections\r\n\r\n* GeoDNS"
+        },
+        {
+          "question": "What is a DNS zone?",
+          "answer": "A DNS zone is a logical container that holds all the DNS resource records for a specific domain name."
+        },
+        {
+          "question": "What types of zones are there?",
+          "answer": "There are several types, including:\r\n\r\n* Primary zone: A primary zone is a read/write zone that is stored in a master DNS server.\r\n\r\n* Secondary zone: A secondary zone is a read-only copy of a primary zone that is stored in a slave DNS server. \r\n\r\n* Stub zone: A stub zone is a type of zone that contains only the essential information about a domain name. It is used to reduce the amount of DNS traffic and improve the efficiency of the DNS resolution process."
+        },
+        {
+          "question": "What tools do you use to troubleshoot DNS issues?",
+          "answer": "```bash\r\n# dig — most powerful DNS lookup tool\r\ndig example.com                    # Full DNS query with all details\r\ndig example.com +short             # Just the IP\r\ndig example.com MX                 # Mail server records\r\ndig @8.8.8.8 example.com           # Query specific DNS server\r\ndig -x 8.8.8.8                     # Reverse DNS lookup\r\ndig example.com +trace             # Trace full resolution path from root\r\n\r\n# nslookup — simpler, cross-platform\r\nnslookup example.com\r\nnslookup example.com 8.8.8.8      # Specify DNS server\r\n\r\n# host — quick, simple\r\nhost example.com\r\n\r\n# whois — domain registration info\r\nwhois example.com\r\n```\r\n\r\n**Common troubleshooting workflow:**\r\n1. `dig example.com +short` — can you resolve the name at all?\r\n2. `dig example.com +trace` — where does resolution break?\r\n3. `dig @8.8.8.8 example.com` — is your local DNS resolver the problem?\r\n4. Check `/etc/resolv.conf` for DNS server configuration\r\n5. Check `/etc/hosts` for local overrides",
+          "section": "dns-troubleshooting-tools"
+        },
+        {
+          "question": "What is DNSSEC? Why is it important?",
+          "answer": "DNSSEC (Domain Name System Security Extensions) adds cryptographic signatures to DNS records, ensuring responses are authentic and haven't been tampered with. Without DNSSEC, an attacker can poison DNS caches and redirect traffic to malicious sites.\r\n\r\n**How it works:**\r\n- Each DNS zone signs its records with a private key\r\n- Resolvers verify the signature using the zone's public key (published as a DS record in the parent zone)\r\n- Forms a \"chain of trust\" from the root zone (`.`) down\r\n\r\n**What it protects against:**\r\n- DNS cache poisoning (Kaminsky attack)\r\n- Man-in-the-middle DNS spoofing\r\n- Response tampering\r\n\r\n**What it does NOT protect:**\r\n- Confidentiality (DNS queries are still unencrypted — use DoH/DoT for that)\r\n- DDoS attacks\r\n- Phishing (if the original site is compromised)\r\n\r\n**Validation check:**\r\n```bash\r\ndig example.com +dnssec     # Look for the `ad` flag (Authenticated Data)\r\n```",
+          "section": "advanced-dns"
+        },
+        {
+          "question": "What is DNS over HTTPS (DoH) and DNS over TLS (DoT)?",
+          "answer": "Both encrypt DNS queries to prevent eavesdropping and tampering:\r\n\r\n| | DoH (DNS over HTTPS) | DoT (DNS over TLS) |\r\n|---|---|---|\r\n| **Port** | 443 | 853 |\r\n| **Protocol** | HTTP/2 + TLS | DNS over TLS |\r\n| **Blends in** | Looks like regular HTTPS traffic | Separate port, identifiable |\r\n| **Best for** | Privacy (harder to block/filter) | Enterprise (can be controlled via firewall) |\r\n\r\n**Why they matter:**\r\n- Traditional DNS (UDP/53) is plaintext — anyone on the network can see what sites you visit\r\n- ISPs and governments can intercept and redirect DNS queries\r\n- DoH/DoT encrypts the query, so only you and the DNS resolver know what you're looking up\r\n\r\n**DoH resolvers:** Cloudflare (`1.1.1.1`), Google (`8.8.8.8`), Quad9 (`9.9.9.9`)",
+          "section": "advanced-dns"
+        },
+        {
+          "question": "What is Split-horizon DNS?",
+          "answer": "Split-horizon (or split-brain) DNS serves different DNS responses based on where the query comes from — internal network vs. the internet.\r\n\r\n**Use case:**\r\n- Internal users resolve `mail.company.com` → `10.0.1.50` (internal IP)\r\n- External users resolve `mail.company.com` → `203.0.113.50` (public IP)\r\n- Same domain name, different answers based on source\r\n\r\n**Why use it:**\r\n- Simpler internal URLs (no `mail.internal.company.com`)\r\n- Security — internal server IPs are hidden from the public internet\r\n- Performance — internal traffic stays on the internal network\r\n\r\n**Implementation:** BIND views, Route53 Resolver rules (AWS), or separate internal/external DNS servers.",
+          "section": "advanced-dns"
+        },
+        {
+          "question": "What is Anycast DNS?",
+          "answer": "Anycast DNS advertises the same IP address from multiple physical locations. When a user sends a DNS query, BGP routing sends it to the nearest (lowest latency) DNS server advertising that IP.\r\n\r\n**Benefits:**\r\n- **Low latency** — Users hit the geographically closest server\r\n- **DDoS resilience** — Attack traffic is distributed across all locations, each absorbing a fraction\r\n- **Automatic failover** — If one location goes down, BGP withdraws the route and traffic flows to the next nearest\r\n\r\n**Who uses it:** All major public DNS services — Cloudflare `1.1.1.1`, Google `8.8.8.8`, OpenDNS. This is why `ping 8.8.8.8` is consistently fast from anywhere in the world — you're hitting a nearby Google data center, not Mountain View.\r\n\r\n**vs. Unicast:** Traditional DNS uses unicast — different IP per server, geographic routing via GeoDNS (returning different IPs based on requester location). Anycast is simpler at the network layer.",
+          "section": "advanced-dns"
+        }
+      ],
+      "exercises": []
+    },
+    {
       "slug": "software_development",
       "name": "Software Development",
       "category": "programming",
@@ -10925,116 +11126,6 @@
           "question": "Given an array/list of integers, find 3 integers which are adding up to 0 (in any language you would like)",
           "answer": "```\r\ndef find_triplets_sum_to_zero(li):\r\n    li = sorted(li)\r\n    for i, val in enumerate(li):\r\n        low, up = 0, len(li)-1\r\n        while low  0:\r\n                up -= 1\r\n            elif tmp < 0:\r\n                low += 1\r\n            else:\r\n                yield li[low], val, li[up]\r\n                low += 1\r\n                up -= 1\r\n```",
           "section": "programming"
-        }
-      ],
-      "exercises": []
-    },
-    {
-      "slug": "dns",
-      "name": "DNS",
-      "category": "network",
-      "categoryName": "Networking",
-      "color": "#E67E22",
-      "sections": [],
-      "questionCount": 24,
-      "exerciseCount": 0,
-      "totalItems": 24,
-      "questions": [
-        {
-          "question": "What is DNS? What is it used for?",
-          "answer": "DNS (Domain Name Systems) is a protocol used for converting domain names into IP addresses.\r\ncomputer networking (at layer 3 of the OSP model) is done with IP addresses but for as humans it's hard to remember IP addresses, it's much easier to remember names. This why we need something such as DNS to convert any domain name we type into an IP address. You can think on DNS as a huge phonebook or database where each corresponding name has an IP."
-        },
-        {
-          "question": "What is DNS resolution?",
-          "answer": "The process of translating IP addresses to domain names."
-        },
-        {
-          "question": "What is a name server?",
-          "answer": "A server which is responsible for resolving DNS queries."
-        },
-        {
-          "question": "What is the resolution sequence of: www.site.com",
-          "answer": "It's resolved in this order:\r\n\r\n1) .\r\n2) .com\r\n3) site.com\r\n4) www.site.com"
-        },
-        {
-          "question": "What is a domain name registrar?",
-          "answer": "[Cloudflare](https://www.cloudflare.com/en-gb/learning/dns/glossary/what-is-a-domain-name-registrar): \"A domain name registrar provides domain name registrations to the general public. A common misconception is that registrars sell domain names; these domain names are actually owned by registries and can only be leased by users.\""
-        },
-        {
-          "question": "Given the following fqdn, www.blipblop.com, what is the root?",
-          "answer": "`.` is the root"
-        },
-        {
-          "question": "Given the following fqdn, www.blipblop.com, what is the top level domain?",
-          "answer": "`.com.` is the top level domain"
-        },
-        {
-          "question": "Given the following fqdn, www.blipblop.com, what is the second level domain?",
-          "answer": "`blipblop.com.` is the second level domain"
-        },
-        {
-          "question": "Given the following fqdn, www.blipblop.com, what is the domain?",
-          "answer": "`www.blipblop.com.` is the domain"
-        },
-        {
-          "question": "Describe DNS resolution workflow in high-level",
-          "answer": "In general the process is as follows:\r\n\r\n  * The user types an address in the web browser (some_site.com)\r\n  * The operating system gets a request from the browser to translate the address the user entered\r\n  * A query created to check if a local entry of the address exists in the system. In case it doesn't, the request is forwarded to the DNS resolver\r\n  * The Resolver is a server, usually configured by your ISP when you connect to the internet, that responsible for resolving your query by contacting other DNS servers\r\n  * The Resolver contacts the root nameserver (aka as .)\r\n  * The root nameserver either responds with the address you are looking for or it responds with the address of the relevant Top Level Domain DNS server (if your address ends with org then the org TLD)\r\n  * The Resolver then contacts the TLD DNS. TLD DNS might respond with the address you are looking for. If it doesn't has the information, it will provide the address of SLD DNS server\r\n  * SLD DNS server will reply with the address to the resolver\r\n  * The Resolver passes this information to the browser while your OS also stores this information in the cache\r\n  * The user cab browse the website with happiness and joy :D"
-        },
-        {
-          "question": "What is a DNS record?",
-          "answer": "A mapping between domain name and an IP address."
-        },
-        {
-          "question": "What types of DNS records are there?",
-          "answer": "* A\r\n  * CNAME\r\n  * PTR\r\n  * MX\r\n  * AAAA\r\n  ...\r\n\r\nA more detailed list, can be found [here](https://www.nslookup.io/learning/dns-record-types)"
-        },
-        {
-          "question": "What is a A record?",
-          "answer": "A (Address): Maps a host name to an IPv4 address.\r\n\r\nWhen a computer has multiple adapter cards and IP addresses, it should have multiple address records."
-        },
-        {
-          "question": "What is a AAAA record?",
-          "answer": "An AAAA Record performs the same function as an A Record, but for an IPv6 Address."
-        },
-        {
-          "question": "What is a CNAME record?",
-          "answer": "CNAME: maps a hostname to another hostname.\r\n\r\nThe target should be a domain name which must have an A or AAAA record. Think of it as an alias record."
-        },
-        {
-          "question": "What is a PTR record?",
-          "answer": "While an A record points a domain name to an IP address, a PTR record does the opposite and resolves the IP address to a domain name."
-        },
-        {
-          "question": "What is a MX record?",
-          "answer": "MX (Mail Exchange) Specifies a mail exchange server for the domain, which allows mail to be delivered to the correct mail servers in the domain."
-        },
-        {
-          "question": "What is a NS record?",
-          "answer": "NS: name servers that can respond to DNS queries"
-        },
-        {
-          "question": "Explain DNS Records TTL",
-          "answer": "[varonis.com](https://www.varonis.com/blog/dns-ttl): \"DNS TTL (time to live) is a setting that tells the DNS resolver how long to cache a query before requesting a new one. The information gathered is then stored in the cache of the recursive or local resolver for the TTL before it reaches back out to collect new, updated details.\""
-        },
-        {
-          "question": "Is DNS using TCP or UDP?",
-          "answer": "DNS uses UDP port 53 for resolving queries either regular or reverse. DNS uses TCP for zone transfer."
-        },
-        {
-          "question": "True or False? DNS can be used for load balancing",
-          "answer": "True."
-        },
-        {
-          "question": "Which techniques a DNS can use for load balancing?",
-          "answer": "There are several techniques that a DNS can use for load balancing, including:\r\n\r\n* Round-robin DNS\r\n\r\n* Weighted round-robin DNS\r\n\r\n* Least connections\r\n\r\n* GeoDNS"
-        },
-        {
-          "question": "What is a DNS zone?",
-          "answer": "A DNS zone is a logical container that holds all the DNS resource records for a specific domain name."
-        },
-        {
-          "question": "What types of zones are there?",
-          "answer": "There are several types, including:\r\n\r\n* Primary zone: A primary zone is a read/write zone that is stored in a master DNS server.\r\n\r\n* Secondary zone: A secondary zone is a read-only copy of a primary zone that is stored in a slave DNS server. \r\n\r\n* Stub zone: A stub zone is a type of zone that contains only the essential information about a domain name. It is used to reduce the amount of DNS traffic and improve the efficiency of the DNS resolution process."
         }
       ],
       "exercises": []

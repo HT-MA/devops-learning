@@ -1528,4 +1528,94 @@ ansible-navigator
 This is the direction Ansible is heading: container-first, reproducible execution with a unified CLI.
 </b></details>
 
+<details>
+<summary>How do you manage Ansible Galaxy collections and roles?</summary><br><b>
+
+Ansible Galaxy is the community hub for sharing Ansible content. Use `ansible-galaxy` CLI to install and manage collections and roles.
+
+**Install collections:**
+```bash
+ansible-galaxy collection install community.general
+ansible-galaxy collection install -r requirements.yml
+```
+
+**`requirements.yml`:**
+```yaml
+---
+collections:
+  - name: community.general
+    version: ">=8.0.0,<9.0.0"
+  - name: ansible.posix
+    version: "1.5.4"
+
+roles:
+  - name: geerlingguy.nginx
+    version: "3.2.0"
+```
+
+**Create and publish a collection:**
+```bash
+ansible-galaxy collection init myorg.mycollection
+# Edit roles, modules, plugins
+ansible-galaxy collection build
+ansible-galaxy collection publish myorg-mycollection-1.0.0.tar.gz
+```
+
+**Project structure with collections:**
+```
+ansible-project/
+├── collections/
+│   └── ansible_collections/
+│       └── myorg/
+│           └── mycollection/
+├── requirements.yml
+└── playbook.yml
+```
+
+Always pin versions in `requirements.yml` — avoid "latest" breaking your playbooks unexpectedly.
+</b></details>
+
+<details>
+<summary>What is ansible-lint and how does it integrate into CI?</summary><br><b>
+
+`ansible-lint` is a static analysis tool that checks playbooks and roles for errors, deprecated syntax, and best practice violations.
+
+**Install and run:**
+```bash
+pip install ansible-lint
+ansible-lint site.yml
+ansible-lint roles/my_role/
+```
+
+**What it catches:**
+- Deprecated module usage
+- Missing `name:` on tasks (best practice)
+- Risky `shell`/`command` usage (should use specific modules)
+- Package installation without `become: yes`
+- Missing `when:` condition on dangerous commands
+- FQCN violations (fully qualified collection names)
+
+**Example violations:**
+```yaml
+# ❌ No name
+- apt: name=nginx state=present
+
+# ✅ With name + FQCN
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+```
+
+**CI integration:**
+```yaml
+# .github/workflows/ansible-ci.yml
+- name: Lint Ansible
+  run: |
+    ansible-lint site.yml
+    ansible-lint roles/*/
+```
+Configure with `.ansible-lint` or `ansible-lint` key in `ansible.cfg` to ignore specific rules or paths.
+</b></details>
+
 
