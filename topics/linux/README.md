@@ -296,30 +296,13 @@ Here are some common examples of IO redirection:
   <code>ls | grep "\.txt$"</code>         
 </b></details>
 
-<details>
-<summary>Demonstrate Linux output redirection</summary><br><b>
 
-<code>ls > ls_output.txt</code>
-</b></details>
 
-<details>
-<summary>Demonstrate Linux stderr output redirection</summary><br><b>
 
-<code>yippiekaiyay 2> ls_output.txt</code>
-</b></details>
 
-<details>
-<summary>Demonstrate Linux stderr to stdout redirection</summary><br><b>
 
-<code>yippiekaiyay &> file</code>
-</b></details>
 
-<details>
-<summary>What is the result of running the following command? <code>yippiekaiyay 1>&2 die_hard</code></code></summary><br><b>
 
-An output similar to: `yippikaiyay: command not found...`<br>
-The file `die_hard` will not be created
-</b></details>
 
 <a name="questions-linux-fhs"></a>
 ### Filesystem Hierarchy Standard
@@ -363,11 +346,7 @@ It contains useful information about the processes that are currently running, i
 /proc is a special virtual filesystem in Unix-like operating systems, including Linux, that provides information about processes and system resources.
 </b></details>
 
-<details>
-<summary>True or False? only root can create files in /proc</summary><br><b>
 
-False. No one can create file in /proc directly (certain operations can lead to files being created in /proc by the kernel).
-</b></details>
 
 <details>
 <summary>What can be found in /proc/cmdline?</summary><br><b>
@@ -440,11 +419,7 @@ The sudo program is installed by default in almost all Linux distributions. If y
 
 </b></details>
 
-<details>
-<summary>True or False? In order to install packages on the system one must be the root user or use the sudo command</summary><br><b>
 
-True
-</b></details>
 
 <details>
 <summary>Explain what are ACLs. For what use cases would you recommend to use them?</summary><br><b>
@@ -460,12 +435,6 @@ ACL stands for Access Control Lists. We can use ACL to have more granular contro
 * No permissions
 </b></details>
 
-<details>
-<summary>A user accidentally executed the following <code>chmod -x $(which chmod)</code>. How to fix it?</summary><br><b>
-
-Using `sudo setfacl -m u::rx /usr/bin/chmod` will set the execute permissions on `chmod` for all the users. Post this, the `chmod` binary can be used as usual.
-</b></details>
-
 <a name="questions-linux-scenarios"></a>
 ### Scenarios
 
@@ -475,17 +444,9 @@ Using `sudo setfacl -m u::rx /usr/bin/chmod` will set the execute permissions on
 There are multiple ways to transfer files between hosts. Personal opinion: use `rsync`
 </b></details>
 
-<details>
-<summary>How to generate a random string?</summary><br><b>
 
-One way is to run the following: `cat /proc/sys/kernel/random/uuid`
-</b></details>
 
-<details>
-<summary>How to generate a random string of 7 characters?</summary><br><b>
 
-`mkpasswd -l 7`
-</b></details>
 
 <a name="questions-linux-systemd"></a>
 ### Systemd
@@ -505,18 +466,9 @@ Hardware -> Kernel -> <u>Daemons</u>, System Libraries, Server Display.
 </b>
 </details>
 
-<details>
-<summary>How to start or stop a service?</summary><br><b>
 
-To start a service: `systemctl start <service name>`
-To stop a service: `systemctl stop <service name>`
-</b></details>
 
-<details>
-<summary>How to check the status of a service?</summary><br><b>
 
-`systemctl status <service name>`
-</b></details>
 
 <details>
 <summary>On a system which uses systemd, how would you display the logs?</summary><br><b>
@@ -586,18 +538,92 @@ tail -f <file_name>
 
 <details>
 <summary>Explain iostat output</summary><br><b>
+
+`iostat` reports CPU and I/O statistics for devices and partitions.
+
+```bash
+iostat -xz 1
+# Key columns:
+#   r/s, w/s    — reads/writes per second
+#   rkB/s, wkB/s — KB read/written per second
+#   await       — avg wait time for I/O (ms)
+#   %util       — device utilization (close to 100% = bottleneck)
+```
+
+💡 `await` > 10ms is concerning for SSD; > 50ms is bad for HDD.
+
+📖 **Docs:** `man iostat`
 </b></details>
 
 <details>
 <summary>How to debug binaries?</summary><br><b>
+
+```bash
+# Check shared library dependencies
+ldd /path/to/binary
+
+# Trace system calls (see where it stalls/crashes)
+strace /path/to/binary
+strace -e trace=open,read,write /path/to/binary
+
+# Trace library calls
+ltrace /path/to/binary
+
+# Inspect binary symbols
+nm /path/to/binary
+objdump -t /path/to/binary
+
+# Use GDB (GNU Debugger)
+gdb /path/to/binary
+gdb -p <PID>             # Attach to running process
+```
+
+📖 **Docs:** `man strace` / `man gdb`
 </b></details>
 
 <details>
 <summary>What is the difference between CPU load and utilization?</summary><br><b>
+
+| | CPU Utilization | Load Average |
+|---|---|---|
+| **Measures** | % of time CPU is busy (not idle) | Number of processes running + waiting for CPU/IO |
+| **Scale** | 0-100% per core | Any number, relative to core count |
+| **What it tells you** | How hard the CPU is working | How long the queue is |
+| **Gotcha** | 100% CPU could be efficient work | Load 4 on a 4-core system = no waiting |
+
+💡 Load > core count means processes are queuing up. Load 8 on 4 cores = significant contention.
+
+```bash
+uptime              # Load averages (1, 5, 15 min)
+mpstat -P ALL 1     # Per-core utilization
+lscpu | grep "^CPU" # Check core count
+```
+
+📖 **Docs:** `man uptime` / http://www.brendangregg.com/blog/2017-08-08/linux-load-averages.html
 </b></details>
 
 <details>
 <summary>How you measure time execution of a program?</summary><br><b>
+
+```bash
+# Built-in: time (shows real/user/sys)
+time curl https://example.com
+# Output: real 0m0.345s  user 0m0.012s  sys 0m0.008s
+
+# More detail: /usr/bin/time (GNU time)
+/usr/bin/time -v curl https://example.com
+# Shows: CPU%, memory, page faults, I/O, context switches, etc.
+
+# Repeat and average (hyperfine)
+hyperfine 'curl https://example.com'
+
+# Profile a shell script step by step
+set -x; ./script.sh; set +x
+```
+
+💡 `real` = wall clock time, `user` = CPU time in user space, `sys` = CPU time in kernel space. If `real > user + sys`, the process spent time waiting (I/O, network).
+
+📖 **Docs:** `man time` / `man 1 time`
 </b></details>
 
 #### Scenarios
@@ -738,6 +764,20 @@ It means that the key of the remote host was changed and doesn't match the one t
 
 <details>
 <summary>What is the difference between SSH and SSL?</summary><br><b>
+
+**SSH (Secure Shell)** and **SSL/TLS (Secure Sockets Layer / Transport Layer Security)** are both encryption protocols but serve different purposes:
+
+| | SSH | SSL/TLS |
+|---|---|---|
+| **Purpose** | Remote shell access & command execution | Secure communication between client/server (e.g., HTTPS) |
+| **Port** | 22 | 443 (HTTPS) / 465 (SMTPS) / 993 (IMAPS) |
+| **Layer** | Application layer | Transport layer (sits between TCP and app) |
+| **Authentication** | Password, key pair, or certificate | Certificate-based (PKI) |
+| **Typical use** | Administering remote servers | Websites, APIs, email |
+
+💡 They are complementary: SSH can tunnel over SSL for extra security, and SSL certificates can be used for SSH authentication.
+
+📖 **Docs:** `man ssh` / https://www.openssh.com/ / https://en.wikipedia.org/wiki/Transport_Layer_Security
 </b></details>
 
 <details>
@@ -802,6 +842,31 @@ Learn more : [How can I tell how many bits my ssh key is? - Superuser](https://s
 
 <details>
 <summary>What is SSH port forwarding?</summary><br><b>
+
+**SSH port forwarding** (SSH tunneling) forwards TCP traffic from one network endpoint to another through an encrypted SSH connection. It's commonly used to securely access services behind firewalls.
+
+**Three types:**
+
+| Type | Flag | Description |
+|------|------|-------------|
+| **Local forwarding** | `-L` | Forward a local port to a remote destination through the SSH server |
+| **Remote forwarding** | `-R` | Forward a remote port back to a local destination (reverse tunnel) |
+| **Dynamic forwarding** | `-D` | Create a SOCKS proxy; the client dynamically decides where to connect |
+
+🔧 **CLI:**
+```bash
+# Local: access remote DB on your local port 5432
+ssh -L 5432:localhost:5432 user@remote-server
+
+# Remote: expose your local webapp to the remote server
+ssh -R 8080:localhost:3000 user@remote-server
+
+# Dynamic SOCKS proxy (browse as if you are the remote server)
+ssh -D 1080 user@remote-server
+# Then configure browser SOCKS proxy to localhost:1080
+```
+
+📖 **Docs:** `man ssh` (search for -L/-R/-D) / https://www.openssh.com/
 </b></details>
 
 <a name="questions-linux-wildcards"></a>
@@ -809,22 +874,85 @@ Learn more : [How can I tell how many bits my ssh key is? - Superuser](https://s
 
 <details>
 <summary>What is Globbing?</summary><br><b>
+
+**Globbing** is the shell's mechanism for filename pattern matching using wildcards. The shell expands patterns into matching filenames BEFORE the command runs — the command itself never sees the wildcards.
+
+| Pattern | Matches |
+|---------|---------|
+| `*` | Any string (including empty) |
+| `?` | Any single character |
+| `[abc]` | One character from the set |
+| `[a-z]` | One character in range |
+| `[!abc]` or `[^abc]` | One character NOT in set |
+
+💡 **Globbing ≠ Regular Expressions.** `*.txt` in shell means "all .txt files", but in regex `.*.txt` is needed. `ls *.txt` uses globbing; `grep "pattern" *.txt` — the grep pattern is regex, but the file list comes from globbing.
+
+📖 **Docs:** `man 7 glob`
 </b></details>
 
 <details>
 <summary>What are wildcards? Can you give an example of how to use them?</summary><br><b>
+
+**Wildcards** (shell globbing) are special characters the shell expands to match filenames. The shell does the expansion before the command runs.
+
+| Wildcard | Matches | Example |
+|----------|---------|---------|
+| `*` | Any string (including empty) | `ls *.txt` → all .txt files |
+| `?` | Any single character | `ls file?.txt` → file1.txt, fileA.txt |
+| `[abc]` | Any one character in the set | `ls file[123].txt` → file1.txt, file2.txt, file3.txt |
+| `[a-z]` | Any one character in the range | `ls file[a-z].txt` |
+| `[^abc]` | Any one character NOT in the set | `ls file[^0-9].txt` |
+
+💡 Wildcards are expanded by the shell, NOT by the command itself. `ls *.txt` never sees `*` — the shell replaces `*.txt` with the actual matching filenames first.
+
+```bash
+ls *.log
+rm -i /tmp/temp_????             # 4-character suffix
+cp report_{2023,2024}.csv backup/  # Brace expansion
+```
+
+📖 **Docs:** `man 7 glob`
 </b></details>
 
 <details>
 <summary>Explain what will <code>ls [XYZ]</code> match</summary><br><b>
+
+`ls [XYZ]` matches any file whose name is a SINGLE character that is `X`, `Y`, or `Z`.
+
+```bash
+# Example: in a directory with files a, X, Y, XY, Z, z
+ls [XYZ]
+# Matches: X, Y, Z (single-char files only)
+# Does NOT match: a, z (case sensitive), XY (two chars)
+```
+
+💡 `[]` defines a character class matching exactly ONE character position.
 </b></details>
 
 <details>
 <summary>Explain what will <code>ls [^XYZ]</code> match</summary><br><b>
+
+`ls [^XYZ]` matches any file whose name is a SINGLE character that is NOT `X`, `Y`, or `Z`.
+
+```bash
+# Example: in a directory with X, Y, Z, a, b, 1
+ls [^XYZ]
+# Matches: a, b, 1 (single-char files not X/Y/Z)
+```
+
+💡 `[^...]` negates the character class. Equivalent to `[!XYZ]` in some shells.
 </b></details>
 
 <details>
 <summary>Explain what will <code>ls [0-5]</code> match</summary><br><b>
+
+`ls [0-5]` matches any file whose name is a SINGLE digit character from 0 through 5.
+
+```bash
+ls [0-5]
+# Matches: 0, 1, 2, 3, 4, 5 (single-digit files)
+# Does NOT match: 6, 7, 8, 9, 42 (two digits)
+```
 </b></details>
 
 <details>
@@ -863,10 +991,1033 @@ lines 1 and 3.
 
 <details>
 <summary>What is the difference single and double quotes?</summary><br><b>
+
+| | Single Quotes `'...'` | Double Quotes `"..."` |
+|---|---|---|
+| **Variable expansion** | No — `echo '$HOME'` → `$HOME` | Yes — `echo "$HOME"` → `/home/user` |
+| **Command substitution** | No — `'$(date)'` literal | Yes — `"$(date)"` expands |
+| **Escape sequences** | Only `\'` (to embed a quote) | `\n`, `\t`, `\# Linux
+
+## Linux Master Application
+
+A completely free application for testing your knowledge on Linux.
+Disclaimer: developed by repository owner
+
+<a href="https://play.google.com/store/apps/details?id=com.codingshell.linuxmaster"><img src="../../images/linux_master.jpeg"/></a>
+
+- [Linux](#linux)
+  - [Linux Master Application](#linux-master-application)
+  - [Linux Exercises](#linux-exercises)
+    - [Basics](#basics)
+    - [Misc](#misc)
+  - [Linux Questions](#linux-questions)
+    - [Linux 101](#linux-101)
+    - [I/O Redirection](#io-redirection)
+    - [Filesystem Hierarchy Standard](#filesystem-hierarchy-standard)
+    - [Permissions](#permissions)
+    - [Scenarios](#scenarios)
+    - [Systemd](#systemd)
+    - [Troubleshooting and Debugging](#troubleshooting-and-debugging)
+      - [Scenarios](#scenarios-1)
+    - [Kernel](#kernel)
+    - [SSH](#ssh)
+    - [Globbing & Wildcards](#globbing--wildcards)
+    - [Boot Process](#boot-process)
+    - [Disk and Filesystem](#disk-and-filesystem)
+    - [Performance Analysis](#performance-analysis)
+    - [Processes](#processes)
+    - [Security](#security)
+    - [Networking](#networking)
+    - [DNS](#dns)
+    - [Packaging](#packaging)
+    - [DNF](#dnf)
+    - [Applications and Services](#applications-and-services)
+    - [Users and Groups](#users-and-groups)
+    - [Hardware](#hardware)
+    - [Namespaces](#namespaces)
+    - [Virtualization](#virtualization)
+    - [AWK](#awk)
+    - [System Calls](#system-calls)
+    - [Filesystem & Files](#filesystem--files)
+    - [Advanced Networking](#advanced-networking)
+    - [Memory](#memory)
+    - [Distributions](#distributions)
+    - [Sed](#sed)
+    - [Misc](#misc-1)
+
+## Linux Exercises
+
+### Basics
+
+|Name|Topic|Objective & Instructions|Solution|Comments|
+|--------|--------|------|----|----|
+| Navigation | cd, pwd | [Exercise](exercises/navigation/README.md) | [Solution](exercises/navigation/solution.md)
+| Create and Destroy | touch, rm, mkdir | [Exercise](exercises/create_remove/README.md) | [Solution](exercises/create_remove/solution.md)
+| Copy Time | touch, cp, ls | [Exercise](exercises/copy/README.md) | [Solution](exercises/copy/solution.md)
+
+### Misc
+
+|Name|Topic|Objective & Instructions|Solution|Comments|
+|--------|--------|------|----|----|
+| Unique Count |  | [Exercise](exercises/uniqe_count/README.md) | [Solution](exercises/uniqe_count/solution.md)
+
+## Linux Questions
+
+### Linux 101
+
+<details>
+<summary>What is Linux?</summary><br><b>
+
+[Wikipedia](https://en.wikipedia.org/wiki/Linux): "Linux is a family of open-source Unix-like operating systems based on the Linux kernel, an operating system kernel first released on September 17, 1991, by Linus Torvalds. Linux is typically packaged in a Linux distribution."
+
+[Red Hat](https://www.redhat.com/en/topics/linux/what-is-linux): "Linux® is an open source operating system (OS). An operating system is the software that directly manages a system’s hardware and resources, like CPU, memory, and storage. The OS sits between applications and hardware and makes the connections between all of your software and the physical resources that do the work."
+
+</b></details>
+
+<details>
+<summary>Explain what each of the following commands does and give an example on how to use it:
+
+  * touch
+  * ls
+  * rm
+  * cat
+  * cp
+  * mkdir
+  * pwd
+  * cd
+</summary><br><b>
+
+  * touch - update file's timestamp. More commonly used for creating files
+  * ls - listing files and directories
+  * rm - remove files and directories
+  * cat - create, view and concatenate files
+  * cp - copy files and directories
+  * mkdir - create directories
+  * pwd - print current working directory (= at what path the user currently located)
+  * cd - change directory
+</b></details>
+
+<details>
+<summary>What each of the following commands does?
+
+  * cd /
+  * cd ~
+  * cd
+  * cd ..
+  * cd .
+  * cd -
+</summary><br><b>
+
+  * cd / -> change to the root directory
+  * cd ~ -> change to your home directory
+  * cd -> change to your home directory
+  * cd .. -> change to the directory above your current i.e parent directory
+  * cd . -> change to the directory you currently in
+  * cd - -> change to the last visited path
+</b></details>
+
+<details>
+<summary>Some of the commands in the previous question can be run with the -r/-R flag. What does it do? Give an example to when you would use it</summary><br><b>
+
+The -r (or -R in some commands) flag allows the user to run a certain command recursively. For example, listing all the files under the following tree is possible when done recursively (`ls -R`):
+
+/dir1/
+  dir2/
+    file1
+    file2
+  dir3/
+    file3
+
+To list all the files, one can run `ls -R /dir1`
+</b></details>
+
+<details>
+<summary>Explain each field in the output of `ls -l` command</summary><br><b>
+It shows a detailed list of files in a long format. From the left:
+
+* file permissions, number of links, owner name, owner group, file size, timestamp of last modification and directory/file name
+</b></details>
+
+<details>
+<summary>What are hidden files/directories? How to list them?</summary><br><b>
+
+These are files directly not displayed after performing a standard ls direct listing. An example of these files are .bashrc which are used to execute some scripts. Some also store configuration about services on your host like .KUBECONFIG. The command used to list them is, `ls -a`
+</b></details>
+
+<details>
+<summary>What do > and < do in terms of input and output for programs?</summary><br><b>
+They take in input (<) and output for a given file (>) using stdin and stdout.
+
+`myProgram < input.txt > executionOutput.txt`
+</b></details>
+
+<details>
+<summary>Explain what each of the following commands does and give an example on how to use it:
+
+  * sed
+  * grep
+  * cut
+  * awk
+</summary><br><b>
+
+  - sed: a stream editor. Can be used for various purposes like replacing a word in a file: `sed -i s/salad/burger/g`
+  - grep: a search tool. Used to search, count or match a text in a file:
+    - searching for any line that contains a word in a file: `grep 'word' file.md`
+    - or displaying the total number of times a string appears in a file: `grep -c 'This is a string' file.md`
+  - cut: a tool for cutting out selected portions of each line of a file:
+    - syntax: `cut OPTION [FILE]`
+      - cutting first two bytes from a word in a file: `cut -b 1-2 file.md`, output: `wo`
+  - awk: a programming language that is mainly used for text processing and data extraction. It can be used to manipulate and modify text in a file:
+    - syntax: awk [OPTIONS] [FILTER] [FILE]
+extracting a specific field from a CSV file: awk -F ',' '{print $1}' file.csv, output: first field of each line in the file
+</b></details>
+
+<details>
+<summary>How to rename the name of a file or a directory?</summary><br><b>
+
+Using the `mv` command.
+</b></details>
+
+<details>
+<summary>Specify which command would you use (and how) for each of the following scenarios 
+
+  * Remove a directory with files
+  * Display the content of a file
+  * Provides access to the file /tmp/x for everyone
+  * Change working directory to user home directory
+  * Replace every occurrence of the word "good" with "great" in the file /tmp/y</summary><br><b>
+
+  - `rm -rf dir`
+  - `cat or less`
+  - `chmod 777 /tmp/x`
+  - `cd ~`
+  - `sed -i s/good/great/g /tmp/y`
+</b></details>
+
+<details>
+<summary>How can you check what is the path of a certain command?</summary><br><b>
+
+  * whereis
+  * which
+</b></details>
+
+<details>
+<summary>What is the difference between these two commands? Will it result in the same output?
+
+```
+echo hello world
+echo "hello world"
+```
+</summary><br><b>
+
+The echo command receives two separate arguments in the first execution and in the second execution it gets one argument which is the string "hello world". The output will be the same.
+</b></details>
+
+<details>
+<summary>Explain piping. How do you perform piping?</summary><br><b>
+
+Using a pipe in Linux, allows you to send the output of one command to the input of another command. For example: `cat /etc/services | wc -l`
+</b></details>
+
+<details>
+<summary>Fix the following commands:
+
+  * sed "s/1/2/g' /tmp/myFile
+  * find . -iname \*.yaml -exec sed -i "s/1/2/g" {} ;
+</summary><br><b>
+
+```
+sed 's/1/2/g' /tmp/myFile  # sed "s/1/2/g" is also fine
+find . -iname "*.yaml" -exec sed -i "s/1/2/g" {} \;
+```
+</b></details>
+
+<details>
+<summary>How to check which commands you executed in the past?</summary><br><b>
+
+history command or .bash_history file 
+  * also can use up arrow key to access or to show the recent commands you type
+</b></details>
+
+<details>
+<summary>Running the command <code>df</code> you get "command not found". What could be wrong and how to fix it?</summary><br><b>
+</b>
+<p><b>
+Most likely the default/generated $PATH was somehow modified or overridden thus not containing <code>/bin/</code> where df would normally go.
+This issue could also happen if bash_profile or any configuration file of your interpreter was wrongly modified, causing erratics behaviours.
+You would solve this by fixing your $PATH variable:
+
+As to fix it there are several options:
+
+1. Manually adding what you need to your $PATH <code>PATH="$PATH":/user/bin:/..etc</code>
+2. You have your weird env variables backed up.
+3. You would look for your distro default $PATH variable, copy paste using method #1
+
+Note: There are many ways of getting errors like this: if bash_profile or any configuration file of your interpreter was wrongly modified; causing erratics behaviours,
+permissions issues, bad compiled software (if you compiled it by yourself)... there is no answer that will be true 100% of the time.
+</b>
+</p>
+</details>
+
+<details>
+<summary>How do you schedule tasks periodically?</summary><br><b>
+
+You can use the commands <code>cron</code> and <code>at</code>.
+With cron, tasks are scheduled using the following format:
+
+<code>*/30 * * * * bash myscript.sh</code> Executes the script every 30 minutes.
+
+<minute> <hour> <day of month> <month> <day of week> <command to execute>
+
+The tasks are stored in a cron file, you can write in it using <code>crontab -e</code>
+
+Alternatively if you are using a distro with systemd it's recommended to use systemd timers.
+</b></details>
+
+<a name="questions-linux-redirection"></a>
+### I/O Redirection
+
+<details>
+<summary>Explain Linux I/O redirection</summary><br><b>
+  In Linux, IO redirection is a way of changing the default input/output behavior of a command or program. It allows you to redirect input and output from/to different sources/destinations, such as files, devices, and other commands.
+
+Here are some common examples of IO redirection:
+ * Redirecting Standard Output (stdout):
+  <code>ls > filelist.txt</code>
+* Redirecting Standard Error (stderr):
+  <code>ls /some/nonexistent/directory 2> error.txt</code>
+* Appending to a file:
+  <code>echo "hello" >> myfile.txt</code>
+* Redirecting Input (stdin):
+  <code>sort < unsorted.txt</code>
+* Using Pipes: Pipes ("|"):
+  <code>ls | grep "\.txt$"</code>         
+</b></details>
+
+
+
+
+
+
+
+
+
+<a name="questions-linux-fhs"></a>
+### Filesystem Hierarchy Standard
+
+<details>
+<summary>In Linux FHS (Filesystem Hierarchy Standard) what is the <code>/</code>?</summary><br><b>
+
+The root of the filesystem. The beginning of the tree.
+</b></details>
+
+<details>
+<summary>What is stored in each of the following paths?
+
+  - /bin, /sbin, /usr/bin and /usr/sbin
+  - /etc
+  - /home
+  - /var
+  - /tmp</summary><br><b>
+
+  * binaries
+  * configuration files
+  * home directories of the different users
+  * files that tend to change and be modified like logs
+  * temporary files
+</b></details>
+
+<details>
+<summary>What is special about the /tmp directory when compared to other directories?</summary><br><b>
+
+`/tmp` folder is cleaned automatically, usually upon reboot.
+</b></details>
+
+<details>
+<summary>What kind of information one can find in /proc?</summary><br><b>
+ 
+It contains useful information about the processes that are currently running, it is regarded as control and information center for kernel.
+</b></details>
+
+<details>
+<summary>What makes /proc different from other filesystems?</summary><br><b>
+/proc is a special virtual filesystem in Unix-like operating systems, including Linux, that provides information about processes and system resources.
+</b></details>
+
+
+
+<details>
+<summary>What can be found in /proc/cmdline?</summary><br><b>
+
+The command passed to the boot loader to run the kernel
+</b></details>
+
+<details>
+<summary>In which path can you find the system devices (e.g. block storage)?</summary><br><b>
+  /dev
+</b></details>
+
+<a name="questions-linux-permissions"></a>
+### Permissions
+
+<details>
+<summary>How to change the permissions of a file?</summary><br><b>
+
+Using the `chmod` command.
+</b></details>
+
+<details>
+<summary>What does the following permissions mean?:
+
+  * 777
+  * 644
+  * 750</summary><br><b>
+
+<pre>
+777 - You give the owner, group and other: Execute (1), Write (2) and Read (4); 4+2+1 = 7.
+644 - Owner has Read (4), Write (2), 4+2 = 6; Group and Other have Read (4).
+750 - Owner has x+r+w, Group has Read (4) and Execute (1); 4+1 = 5. Other have no permissions.
+</pre>
+</b></details>
+
+<details>
+<summary>What this command does? <code>chmod +x some_file</code></summary><br><b>
+It adds execute permissions to all sets i.e user, group and others
+</b></details>
+
+<details>
+<summary>Explain what is setgid and setuid</summary><br><b>
+
+* setuid is a linux file permission that permits a user to run a file or program with the permissions of the owner of that file. This is possible by elevation of current user privileges.
+* setgid is a process when executed will run as the group that owns the file.
+</b></details>
+
+<details>
+<summary>What is the purpose of sticky bit?</summary><br><b>
+Its a bit that only allows the owner or the root user to delete or modify the file.
+</b></details>
+
+<details>
+<summary>What the following commands do?
+
+  - chmod
+  - chown
+  - chgrp</summary><br><b>
+
+  * chmod - changes access permissions to files system objects
+  * chown - changes the owner of file system files and directories
+  * chgrp - changes the group associated with a file system object
+</b></details>
+
+<details>
+<summary>What is sudo? How do you set it up?</summary><br><b>
+sudo is a command-line utility in Unix-like operating systems that allows users to run programs with the privileges of another user, usually the superuser (root). It stands for "superuser do.
+
+The sudo program is installed by default in almost all Linux distributions. If you need to install sudo in Debian/Ubuntu, use the command apt-get install sudo
+
+</b></details>
+
+
+
+<details>
+<summary>Explain what are ACLs. For what use cases would you recommend to use them?</summary><br><b>
+ACL stands for Access Control Lists. We can use ACL to have more granular control over accesses to certain files for certain users specifically. For instance, we can return the ACL of a particular file with the command <code>getfacl /absolute/file/path</code> and modify ACLs for a specific file with <code>setfacl -m</code>.
+  
+</b></details>
+
+<details>
+<summary>You try to create a file but it fails. Name at least three different reason as to why it could happen</summary><br><b>
+
+* No more disk space
+* No more inodes
+* No permissions
+</b></details>
+
+<a name="questions-linux-scenarios"></a>
+### Scenarios
+
+<details>
+<summary>You would like to copy a file to a remote Linux host. How would you do?</summary><br><b>
+
+There are multiple ways to transfer files between hosts. Personal opinion: use `rsync`
+</b></details>
+
+
+
+
+
+<a name="questions-linux-systemd"></a>
+### Systemd
+
+<details>
+<summary>What is systemd?</summary><br>
+<b>
+Systemd is a daemon (System 'd', d stands for daemon).
+
+A daemon is a program that runs in the background without direct control of the user, although the user can at any time
+talk to the daemon.
+
+systemd has many features such as user processes control/tracking, snapshot support, inhibitor locks..
+
+If we visualize the unix/linux system in layers, systemd would fall directly after the linux kernel.<br>
+Hardware -> Kernel -> <u>Daemons</u>, System Libraries, Server Display.
+</b>
+</details>
+
+
+
+
+
+<details>
+<summary>On a system which uses systemd, how would you display the logs?</summary><br><b>
+
+<code>journalctl</code>
+</b></details>
+
+<details>
+<summary>Describe how to make a certain process/app a service</summary><br><b>
+  The process will need a <code>.service</code> file to be created at the location <code>/etc/systemd/system/service-name.service</code> to be made into a service. The file has certain characteristics and need certain inputs to work. More details <a href="https://medium.com/@benmorel/creating-a-linux-service-with-systemd-611b5c8b91d6">here</a>.
+</b></details>
+
+### Troubleshooting and Debugging
+
+<details>
+<summary>Where system logs are located?</summary><br><b>
+
+/var/log
+</b></details>
+
+<details>
+<summary>How to follow file's content as it being appended without opening the file every time?</summary><br><b>
+
+tail -f <file_name>
+</b></details>
+
+<details>
+<summary>What are you using for troubleshooting and debugging <b>network</b> issues?</summary><br><b>
+
+<code>dstat -t</code> is great for identifying network and disk issues.
+<code>netstat -tnlaup</code> can be used to see which processes are running on which ports.
+<code>lsof -i -P</code> can be used for the same purpose as netstat.
+<code>ngrep -d any metafilter</code> for matching regex against payloads of packets.
+<code>tcpdump</code> for capturing packets
+<code>wireshark</code> same concept as tcpdump but with GUI (optional).
+</b></details>
+
+<details>
+<summary>What are you using for troubleshooting and debugging <b>disk & file system</b> issues?</summary><br><b>
+
+<code>dstat -t</code> is great for identifying network and disk issues.
+<code>opensnoop</code> can be used to see which files are being opened on the system (in real time).
+</b></details>
+
+<details>
+<summary>What are you using for troubleshooting and debugging <b>process</b> issues?</summary><br><b>
+
+<code>strace</code> is great for understanding what your program does. It prints every system call your program executed.
+</b></details>
+
+<details>
+<summary>What are you using for debugging CPU related issues?</summary><br><b>
+
+<code>top</code> will show you how much CPU percentage each process consumes
+<code>perf</code> is a great choice for sampling profiler and in general, figuring out what your CPU cycles are "wasted" on
+<code>flamegraphs</code> is great for CPU consumption visualization (http://www.brendangregg.com/flamegraphs.html)
+</b></details>
+
+<details>
+<summary>You get a call from someone claiming "my system is SLOW". What do you do?</summary><br><b>
+
+* Check with `top` for anything unusual
+* Run `dstat -t` to check if it's related to disk or network.
+* Check if it's network related with `sar`
+* Check I/O stats with `iostat`
+</b></details>
+
+<details>
+<summary>Explain iostat output</summary><br><b>
+
+`iostat` reports CPU and I/O statistics for devices and partitions.
+
+```bash
+iostat -xz 1
+# Key columns:
+#   r/s, w/s    — reads/writes per second
+#   rkB/s, wkB/s — KB read/written per second
+#   await       — avg wait time for I/O (ms)
+#   %util       — device utilization (close to 100% = bottleneck)
+```
+
+💡 `await` > 10ms is concerning for SSD; > 50ms is bad for HDD.
+
+📖 **Docs:** `man iostat`
+</b></details>
+
+<details>
+<summary>How to debug binaries?</summary><br><b>
+
+```bash
+# Check shared library dependencies
+ldd /path/to/binary
+
+# Trace system calls (see where it stalls/crashes)
+strace /path/to/binary
+strace -e trace=open,read,write /path/to/binary
+
+# Trace library calls
+ltrace /path/to/binary
+
+# Inspect binary symbols
+nm /path/to/binary
+objdump -t /path/to/binary
+
+# Use GDB (GNU Debugger)
+gdb /path/to/binary
+gdb -p <PID>             # Attach to running process
+```
+
+📖 **Docs:** `man strace` / `man gdb`
+</b></details>
+
+<details>
+<summary>What is the difference between CPU load and utilization?</summary><br><b>
+
+| | CPU Utilization | Load Average |
+|---|---|---|
+| **Measures** | % of time CPU is busy (not idle) | Number of processes running + waiting for CPU/IO |
+| **Scale** | 0-100% per core | Any number, relative to core count |
+| **What it tells you** | How hard the CPU is working | How long the queue is |
+| **Gotcha** | 100% CPU could be efficient work | Load 4 on a 4-core system = no waiting |
+
+💡 Load > core count means processes are queuing up. Load 8 on 4 cores = significant contention.
+
+```bash
+uptime              # Load averages (1, 5, 15 min)
+mpstat -P ALL 1     # Per-core utilization
+lscpu | grep "^CPU" # Check core count
+```
+
+📖 **Docs:** `man uptime` / http://www.brendangregg.com/blog/2017-08-08/linux-load-averages.html
+</b></details>
+
+<details>
+<summary>How you measure time execution of a program?</summary><br><b>
+
+```bash
+# Built-in: time (shows real/user/sys)
+time curl https://example.com
+# Output: real 0m0.345s  user 0m0.012s  sys 0m0.008s
+
+# More detail: /usr/bin/time (GNU time)
+/usr/bin/time -v curl https://example.com
+# Shows: CPU%, memory, page faults, I/O, context switches, etc.
+
+# Repeat and average (hyperfine)
+hyperfine 'curl https://example.com'
+
+# Profile a shell script step by step
+set -x; ./script.sh; set +x
+```
+
+💡 `real` = wall clock time, `user` = CPU time in user space, `sys` = CPU time in kernel space. If `real > user + sys`, the process spent time waiting (I/O, network).
+
+📖 **Docs:** `man time` / `man 1 time`
+</b></details>
+
+#### Scenarios
+
+<details>
+<summary>You have a process writing to a file. You don't know which process exactly, you just know the path of the file. You would like to kill the process as it's no longer needed. How would you achieve it?</summary><br><b>
+
+1. Run `lsof <FILE_PATH>`
+2. Use the pid (process ID) from the lsof command and run `kill <PID>`
+
+</b></details>
+
+### Kernel
+
+<details>
+<summary>What is a kernel, and what does it do?</summary><br><b>
+
+The kernel is part of the operating system and is responsible for tasks like:
+
+  * Allocating memory
+  * Schedule processes
+  * Control CPU
+</b></details>
+
+<details>
+<summary>How do you find out which Kernel version your system is using?</summary><br><b>
+
+`uname -a` command
+</b></details>
+
+<details>
+<summary>What is a Linux kernel module and how do you load a new module?</summary><br><b>
+
+A Linux kernel module is a piece of code that can be dynamically loaded into the kernel to extend its functionality. These modules are typically used to add support for hardware devices, filesystems, or system calls. The kernel itself is monolithic, but with modules, its capabilities can be extended without having to reboot the system or recompile the entire kernel.
+</b></details>
+
+<details>
+<summary>Explain user space vs. kernel space</summary><br><b>
+
+The operating system executes the kernel in protected memory to prevent anyone from changing (and risking it crashing). This is what is known as "Kernel space".
+"User space" is where users executes their commands or applications. It's important to create this separation since we can't rely on user applications to not tamper with the kernel, causing it to crash.
+
+Applications can access system resources and indirectly the kernel space by making what is called "system calls".
+</b></details>
+
+<details>
+<summary>In what phases of kernel lifecycle, can you change its configuration?</summary><br><b>
+
+  * Build time (when it's compiled)
+  * Boot time (when it starts)
+  * Runtime (once it's already running)
+</b></details>
+
+<details>
+<summary>Where can you find kernel's configuration?</summary><br><b>
+
+Usually it will reside in `/boot/config-<kernel version>.<os release>.<arch>`
+</b></details>
+
+<details>
+<summary>Where can you find the file that contains the command passed to the boot loader to run the kernel?</summary><br><b>
+
+`/proc/cmdline`
+</b></details>
+
+<details>
+<summary>How to list kernel's runtime parameters?</summary><br><b>
+
+`sysctl -a`
+</b></details>
+
+<details>
+<summary>Will running <code>sysctl -a</code> as a regular user vs. root, produce different result?</summary><br><b>
+
+Yes, you might notice that in most systems, when running `systctl -a` with root, you'll get more runtime parameters compared to executing the same command with a regular user.
+</b></details>
+
+<details>
+<summary>You would like to enable IPv4 forwarding in the kernel, how would you do it?</summary><br><b>
+
+`sudo sysctl net.ipv4.ip_forward=1`
+
+To make it persistent (applied after reboot for example): insert `net.ipv4.ip_forward = 1` into `/etc/sysctl.conf`
+
+Another way to is to run `echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward`
+</b></details>
+
+<details>
+<summary>How <code>sysctl</code> applies the changes to kernel's runtime parameters the moment you run sysctl command?</summary><br><b>
+
+If you `strace` the sysctl command you can see it does it by changing the file under /proc/sys/...
+
+In the past it was done with sysctl system call, but it was deprecated at some point.
+</b></details>
+
+<details>
+<summary>How changes to kernel runtime parameters persist? (applied even after reboot to the system for example)</summary><br><b>
+
+There is a service called `systemd-sysctl` that takes the content of /etc/sysctl.conf and applies it. This is how changes persist, even after reboot, when they are written in /etc/sysctl.conf
+</b></details>
+
+<details>
+<summary>Are the changes you make to kernel parameters in a container, affects also the kernel parameters of the host on which the container runs?</summary><br><b>
+
+No. Containers have their own /proc filesystem so any change to kernel parameters inside a container, are not affecting the host or other containers running on that host.
+</b></details>
+
+<a name="questions-linux-ssh"></a>
+### SSH
+
+<details>
+<summary>What is SSH? How to check if a Linux server is running SSH?</summary><br><b>
+
+[Wikipedia Definition](https://en.wikipedia.org/wiki/SSH_(Secure_Shell)): "SSH or Secure Shell is a cryptographic network protocol for operating network services securely over an unsecured network."
+
+[Hostinger.com Definition](https://www.hostinger.com/tutorials/ssh-tutorial-how-does-ssh-work): "SSH, or Secure Shell, is a remote administration protocol that allows users to control and modify their remote servers over the Internet."
+
+An SSH server will have SSH daemon running. Depends on the distribution, you should be able to check whether the service is running (e.g. systemctl status sshd).
+</b></details>
+
+<details>
+<summary>Why SSH is considered better than telnet?</summary><br><b>
+
+Telnet also allows you to connect to a remote host but as opposed to SSH where the communication is encrypted, in telnet, the data is sent in clear text, so it doesn't considered to be secured because anyone on the network can see what exactly is sent, including passwords.
+</b></details>
+
+<details>
+<summary>What is stored in <code>~/.ssh/known_hosts</code>?</summary><br><b>
+
+The file stores the key fingerprints for the clients connecting to the SSH server. This fingerprint creates a trust between the client and the server for future SSH connections.
+</b></details>
+
+<details>
+<summary>You try to ssh to a server and you get "Host key verification failed". What does it mean?</summary><br><b>
+
+It means that the key of the remote host was changed and doesn't match the one that stored on the machine (in ~/.ssh/known_hosts).
+</b></details>
+
+<details>
+<summary>What is the difference between SSH and SSL?</summary><br><b>
+
+**SSH (Secure Shell)** and **SSL/TLS (Secure Sockets Layer / Transport Layer Security)** are both encryption protocols but serve different purposes:
+
+| | SSH | SSL/TLS |
+|---|---|---|
+| **Purpose** | Remote shell access & command execution | Secure communication between client/server (e.g., HTTPS) |
+| **Port** | 22 | 443 (HTTPS) / 465 (SMTPS) / 993 (IMAPS) |
+| **Layer** | Application layer | Transport layer (sits between TCP and app) |
+| **Authentication** | Password, key pair, or certificate | Certificate-based (PKI) |
+| **Typical use** | Administering remote servers | Websites, APIs, email |
+
+💡 They are complementary: SSH can tunnel over SSL for extra security, and SSL certificates can be used for SSH authentication.
+
+📖 **Docs:** `man ssh` / https://www.openssh.com/ / https://en.wikipedia.org/wiki/Transport_Layer_Security
+</b></details>
+
+<details>
+<summary>What <code>ssh-keygen</code> is used for?</summary><br><b>
+
+<code>ssh-keygen</code> is a tool to generate an authentication key pair for SSH, that consists of a private and a public key. It supports a number of algorithms to generate authentication keys : 
+- dsa
+- ecdsa
+- ecdsa-sk
+- ed25519
+- ed25519-sk
+- rsa (default)
+
+One can also specify number of bits in key. Command below generates an SSH key pair with RSA 4096-bits :
+```
+$ ssh-keygen -t rsa -b 4096
+```
+
+The output looks like this:
+```
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/user/.ssh/id_rsa): 
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/user/.ssh/id_rsa
+Your public key has been saved in /home/user/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:f5MOGnhzYfC0ZCHvbSXXiRiNVYETjxpHcXD5xSojx+M user@mac-book-pro
+The key's randomart image is:
++---[RSA 4096]----+
+|        . ..+***o|
+|         o o++*o+|
+|        . =+.++++|
+|         B.oX+. .|
+|        S *=o+   |
+|       . o oE.   |
+|      . + + +    |
+|       . = + .   |
+|        .   .    |
++----[SHA256]-----+
+```
+
+One can check how many bits an SSH key has with :
+```
+$ ssh-keygen -l -f /home/user/.ssh/id_rsa
+```
+
+Output should look like this :
+```
+4096 SHA256:f5MOGnhzYfC0ZCHvbSXXiRiNVYETjxpHcXD5xSojx+M user@mac-book-pro (RSA)
+```
+It shows the key is RSA 4096-bits.
+
+`-l` and `-f` parameters usage explanation :
+```
+-l          Show the fingerprint of the key file.
+-f filename Filename of the key file.
+```
+
+Learn more : [How can I tell how many bits my ssh key is? - Superuser](https://superuser.com/a/139311)
+</b></details>
+
+<details>
+<summary>What is SSH port forwarding?</summary><br><b>
+
+**SSH port forwarding** (SSH tunneling) forwards TCP traffic from one network endpoint to another through an encrypted SSH connection. It's commonly used to securely access services behind firewalls.
+
+**Three types:**
+
+| Type | Flag | Description |
+|------|------|-------------|
+| **Local forwarding** | `-L` | Forward a local port to a remote destination through the SSH server |
+| **Remote forwarding** | `-R` | Forward a remote port back to a local destination (reverse tunnel) |
+| **Dynamic forwarding** | `-D` | Create a SOCKS proxy; the client dynamically decides where to connect |
+
+🔧 **CLI:**
+```bash
+# Local: access remote DB on your local port 5432
+ssh -L 5432:localhost:5432 user@remote-server
+
+# Remote: expose your local webapp to the remote server
+ssh -R 8080:localhost:3000 user@remote-server
+
+# Dynamic SOCKS proxy (browse as if you are the remote server)
+ssh -D 1080 user@remote-server
+# Then configure browser SOCKS proxy to localhost:1080
+```
+
+📖 **Docs:** `man ssh` (search for -L/-R/-D) / https://www.openssh.com/
+</b></details>
+
+<a name="questions-linux-wildcards"></a>
+### Globbing & Wildcards
+
+<details>
+<summary>What is Globbing?</summary><br><b>
+
+**Globbing** is the shell's mechanism for filename pattern matching using wildcards. The shell expands patterns into matching filenames BEFORE the command runs — the command itself never sees the wildcards.
+
+| Pattern | Matches |
+|---------|---------|
+| `*` | Any string (including empty) |
+| `?` | Any single character |
+| `[abc]` | One character from the set |
+| `[a-z]` | One character in range |
+| `[!abc]` or `[^abc]` | One character NOT in set |
+
+💡 **Globbing ≠ Regular Expressions.** `*.txt` in shell means "all .txt files", but in regex `.*.txt` is needed. `ls *.txt` uses globbing; `grep "pattern" *.txt` — the grep pattern is regex, but the file list comes from globbing.
+
+📖 **Docs:** `man 7 glob`
+</b></details>
+
+<details>
+<summary>What are wildcards? Can you give an example of how to use them?</summary><br><b>
+
+**Wildcards** (shell globbing) are special characters the shell expands to match filenames. The shell does the expansion before the command runs.
+
+| Wildcard | Matches | Example |
+|----------|---------|---------|
+| `*` | Any string (including empty) | `ls *.txt` → all .txt files |
+| `?` | Any single character | `ls file?.txt` → file1.txt, fileA.txt |
+| `[abc]` | Any one character in the set | `ls file[123].txt` → file1.txt, file2.txt, file3.txt |
+| `[a-z]` | Any one character in the range | `ls file[a-z].txt` |
+| `[^abc]` | Any one character NOT in the set | `ls file[^0-9].txt` |
+
+💡 Wildcards are expanded by the shell, NOT by the command itself. `ls *.txt` never sees `*` — the shell replaces `*.txt` with the actual matching filenames first.
+
+```bash
+ls *.log
+rm -i /tmp/temp_????             # 4-character suffix
+cp report_{2023,2024}.csv backup/  # Brace expansion
+```
+
+📖 **Docs:** `man 7 glob`
+</b></details>
+
+<details>
+<summary>Explain what will <code>ls [XYZ]</code> match</summary><br><b>
+
+`ls [XYZ]` matches any file whose name is a SINGLE character that is `X`, `Y`, or `Z`.
+
+```bash
+# Example: in a directory with files a, X, Y, XY, Z, z
+ls [XYZ]
+# Matches: X, Y, Z (single-char files only)
+# Does NOT match: a, z (case sensitive), XY (two chars)
+```
+
+💡 `[]` defines a character class matching exactly ONE character position.
+</b></details>
+
+<details>
+<summary>Explain what will <code>ls [^XYZ]</code> match</summary><br><b>
+
+`ls [^XYZ]` matches any file whose name is a SINGLE character that is NOT `X`, `Y`, or `Z`.
+
+```bash
+# Example: in a directory with X, Y, Z, a, b, 1
+ls [^XYZ]
+# Matches: a, b, 1 (single-char files not X/Y/Z)
+```
+
+💡 `[^...]` negates the character class. Equivalent to `[!XYZ]` in some shells.
+</b></details>
+
+<details>
+<summary>Explain what will <code>ls [0-5]</code> match</summary><br><b>
+
+`ls [0-5]` matches any file whose name is a SINGLE digit character from 0 through 5.
+
+```bash
+ls [0-5]
+# Matches: 0, 1, 2, 3, 4, 5 (single-digit files)
+# Does NOT match: 6, 7, 8, 9, 42 (two digits)
+```
+</b></details>
+
+<details>
+<summary>What each of the following matches
+
+  - ?
+  - *</summary><br><b>
+
+  * The ? matches any single character
+  * The * matches zero or more characters
+</b></details>
+
+<details>
+<summary>What do we grep for in each of the following commands?:
+
+  * <code>grep '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' some_file</code>
+  * <code>grep -E "error|failure" some_file</code>
+  * <code>grep '[0-9]$' some_file</code>
+</summary><br><b>
+
+1. An IP address
+2. The word "error" or "failure"
+3. Lines which end with a number
+</b></details>
+
+<details>
+<summary>Which line numbers will be printed when running `grep '\baaa\b'` on the following content:
+
+aaa
+bbb
+ccc.aaa
+aaaaaa</summary><br><b>
+
+lines 1 and 3.
+</b></details>
+
+<details>
+, `\"`, etc. |
+| **Use case** | Literal strings, fixed values | Strings with variables, human-readable output |
+
+```bash
+name=Alice
+echo 'Hello $name'   # Hello $name  (literal)
+echo "Hello $name"   # Hello Alice   (expanded)
+```
 </b></details>
 
 <details>
 <summary>What is escaping? What escape character is used for escaping?</summary><br><b>
+
+**Escaping** removes the special meaning of a character so it's treated literally. The escape character in Bash is the backslash `\`.
+
+```bash
+# Without escaping: * expands to all files
+echo *              # file1 file2 file3
+
+# With escaping: * is literal
+echo \*             # *
+
+# Escaping spaces in filenames
+ls My\ Documents/
+
+# Escaping $ to prevent variable expansion
+echo \$HOME         # $HOME (literal, not expanded)
+```
+
+💡 Alternatives to escaping: use single quotes (everything literal) or double quotes (selective).
 </b></details>
 
 <details>
@@ -887,19 +2038,104 @@ I consider this as a good blog post to read more about it: https://shapeshed.com
 <details>
 <summary>Tell me everything you know about the Linux boot process</summary><br><b>
 
-Another way to ask this: what happens from the moment you turned on the server until you get a prompt
+The Linux boot process has 6 stages:
+
+| Stage | What happens |
+|-------|-------------|
+| **1. BIOS/UEFI** | Firmware runs POST (Power-On Self-Test), initializes hardware, locates bootable device |
+| **2. Boot Loader** | GRUB2 loads the kernel into memory. GRUB config at `/boot/grub2/grub.cfg` (or `/etc/default/grub`) |
+| **3. Kernel Init** | Kernel decompresses, initializes drivers, mounts root filesystem (initramfs first, then pivot to real root) |
+| **4. init / systemd** | Kernel starts PID 1 (systemd on modern distros). systemd reads `/etc/systemd/system/` |
+| **5. Targets / Runlevels** | systemd activates the default target (`default.target` → `multi-user.target` or `graphical.target`) |
+| **6. Login Prompt** | Getty starts on TTYs (or display manager for GUI). System is ready for login |
+
+```bash
+# Analyze boot time
+systemd-analyze
+systemd-analyze blame          # Time per service
+systemd-analyze critical-chain # Critical path
+
+# Check kernel boot messages
+dmesg | less
+journalctl -b                  # All logs since this boot
+```
+
+📖 **Docs:** https://www.kernel.org/doc/html/latest/admin-guide/boot.html / `man bootup`
 </b></details>
 
 <details>
 <summary>What is GRUB2?</summary><br><b>
+
+**GRUB2 (GRand Unified Bootloader v2)** is the boot loader used by most Linux distributions. It's the first software that runs when a computer starts, responsible for loading the Linux kernel into memory.
+
+**Key features:**
+* Multi-boot support — can chain-load Windows, other Linux distros
+* Filesystem-aware — can read ext4, XFS, Btrfs (no need for raw sector access)
+* Modular design — modules loaded from `/boot/grub2/`
+* Rescue shell — if boot fails, drops to a `grub>` prompt for manual recovery
+
+🔧 **CLI:**
+```bash
+# View/edit GRUB configuration
+cat /etc/default/grub
+
+# Regenerate grub.cfg after changes
+sudo grub2-mkconfig -o /boot/grub2/grub.cfg  # RHEL/Fedora
+sudo update-grub                               # Debian/Ubuntu
+
+# Reinstall GRUB to a disk
+sudo grub2-install /dev/sda
+```
+
+📖 **Docs:** `info grub2` / https://www.gnu.org/software/grub/
 </b></details>
 
 <details>
 <summary>What is Secure Boot?</summary><br><b>
+
+**Secure Boot** is a UEFI firmware security feature that ensures only trusted (digitally signed) software runs during boot. It prevents rootkits and bootkits from hijacking the boot process.
+
+**How it works:**
+1. UEFI firmware contains trusted certificates (Microsoft's, OEM's, optionally custom keys)
+2. Each boot component (shim, GRUB, kernel, kernel modules) must be signed with a trusted key
+3. If signature verification fails → boot is blocked
+
+On most Linux distros, a signed "shim" binary bridges Microsoft's keys to the Linux world. Some distros (e.g., Ubuntu, Fedora) are signed and work out of the box.
+
+```bash
+# Check if Secure Boot is enabled
+mokutil --sb-state
+
+# Check if the kernel is UEFI-booted
+ls /sys/firmware/efi/
+```
+
+📖 **Docs:** https://wiki.ubuntu.com/UEFI/SecureBoot / `man mokutil`
 </b></details>
 
 <details>
 <summary>What can you find in /boot?</summary><br><b>
+
+The `/boot` directory contains everything needed to boot the system before the kernel mounts the root filesystem:
+
+| File/Dir | Purpose |
+|----------|---------|
+| `vmlinuz-*` | Compressed Linux kernel image |
+| `initramfs-*` / `initrd-*` | Initial RAM disk — temporary root filesystem with drivers/modules needed to mount real root |
+| `System.map-*` | Symbol table mapping kernel function names to addresses (for debugging) |
+| `config-*` | Kernel configuration file used at compile time |
+| `grub2/` or `grub/` | GRUB bootloader files, modules, themes, and `grub.cfg` |
+| `efi/` | EFI system partition mount point (if UEFI boot) |
+
+```bash
+ls -lh /boot
+# Check your running kernel version
+uname -r
+# Remove old kernels (Debian/Ubuntu)
+sudo apt autoremove --purge
+```
+
+📖 **Docs:** `man hier` (Filesystem Hierarchy Standard)
 </b></details>
 
 <a name="questions-linux-disk-fs"></a>
@@ -1012,27 +2248,11 @@ find / -inum $(ls -i original.txt | awk '{print $1}') 2>/dev/null
 📖 **Docs:** `man ln` / https://www.kernel.org/doc/html/latest/filesystems/
 </b></details>
 
-<details>
-<summary>True or False? You can create an hard link for a directory</summary><br><b>
 
-False. Hard links to directories are not allowed (except for `.` and `..` which are created by the filesystem itself). This restriction prevents circular references in the filesystem tree. The `ln` command will return an error if you attempt it.
-</b></details>
 
-<details>
-<summary>True or False? You can create a soft link between different filesystems</summary><br><b>
 
-True. Since a soft link only stores a path string (not a reference to an inode), it can point across filesystem boundaries, even to NFS mounts or other remote filesystems.
-</b></details>
 
-<details>
-<summary>True or False? Directories always have by minimum 2 links</summary><br><b>
 
-True. Every directory starts with at least 2 hard links:
-* `.` — the directory itself (link from its own entry)
-* `..` — the parent directory's reference to it
-
-Each subdirectory inside a directory adds one more link (via the subdirectory's `..` entry). So: `link_count = 2 + number of subdirectories`.
-</b></details>
 
 <details>
 <summary>What happens when you delete the original file in case of soft link and hard link?</summary><br><b>
@@ -1416,20 +2636,12 @@ journalctl -p err -b                # Errors only
 📖 **Docs:** `man rsyslogd` / `man journalctl`
 </b></details>
 
-<details>
-<summary>True or False? both /tmp and /var/tmp cleared upon system boot</summary><br><b>
 
-False. /tmp is cleared upon system boot while /var/tmp is cleared every a couple of days or not cleared at all (depends on distro).
-</b></details>
 
 <a name="questions-linux-performance-analysis"></a>
 ### Performance Analysis
 
-<details>
-<summary>How to check what is the current load average?</summary><br><b>
 
-One can use `uptime` or `top`
-</b></details>
 
 <details>
 <summary>You know how to see the load average, great. but what each part of it means? for example 1.43, 2.34, 2.78</summary><br><b>
@@ -1437,29 +2649,13 @@ One can use `uptime` or `top`
 [This article](http://www.brendangregg.com/blog/2017-08-08/linux-load-averages.html) summarizes the load average topic in a great way
 </b></details>
 
-<details>
-<summary>How to check process usage?</summary><br><b>
 
-pidstat
-</b></details>
 
-<details>
-<summary>How to check disk I/O?</summary><br><b>
 
-`iostat -xz 1`
-</b></details>
 
-<details>
-<summary>How to check how much free memory a system has? How to check memory consumption by each process?</summary><br><b>
 
-You can use the commands <code>top</code> and <code>free</code>
-</b></details>
 
-<details>
-<summary>How to check TCP stats?</summary><br><b>
 
-sar -n TCP,ETCP 1
-</b></details>
 
 <a name="questions-linux-processes"></a>
 ### Processes
@@ -1574,15 +2770,9 @@ kill -HUP 1234         # SIGHUP (reload config)
 📖 **Docs:** `man 7 signal` / `man kill`
 </b></details>
 
-<details>
-<summary>What <code>kill 0</code> does?</summary><br><b>
-"kill 0" sends a signal to all processes in the current process group. It is used to check if the processes exist or not
-</b></details>
 
-<details>
-<summary>What <code>kill -0 <PID></code> does?</summary><br><b>
-"kill -0" checks if a process with a given process ID exists or not. It does not actually send any signal to the process.
-</b></details>
+
+
 
 <details>
 <summary>What is a trap?</summary><br><b>
@@ -1595,10 +2785,7 @@ A trap is a mechanism that allows the shell to intercept signals sent to a proce
 One way to investigate why a process stops running is to check the system logs, such as the messages in /var/log/messages or journalctl. Additionally, checking the process's resource usage and system load may provide clues as to what caused the process to stop
 </b></details>
 
-<details>
-<summary>What happens when you press ctrl + c?</summary><br><b>
-When you press "Ctrl+C," it sends the SIGINT signal to the foreground process, asking it to terminate gracefully.
-</b></details>
+
 
 <details>
 <summary>What is a Daemon in Linux?</summary><br><b>
@@ -1679,15 +2866,7 @@ A process which has finished to run but has not exited.
 One reason it happens is when a parent process is programmed incorrectly. Every parent process should execute wait() to get the exit code from the child process which finished to run. But when the parent isn't checking for the child exit code, the child process can still exists although it finished to run.
 </b></details>
 
-<details>
-<summary>How to get rid of zombie processes?</summary><br><b>
 
-You can't kill a zombie process the regular way with `kill -9` for example as it's already dead.
-
-One way to kill zombie process is by sending SIGCHLD to the parent process telling it to terminate its child processes. This might not work if the parent process wasn't programmed properly. The invocation is `kill -s SIGCHLD [parent_pid]`
-
-You can also try closing/terminating the parent process. This will make the zombie process a child of init (1) which does periodic cleanups and will at some point clean up the zombie process.
-</b></details>
 
 <details>
 <summary>How to find all the
@@ -2250,17 +3429,9 @@ sudo apt install keepalived
 📖 **Docs:** `man ip-address` / https://www.keepalived.org/
 </b></details>
 
-<details>
-<summary>True or False? The MAC address of an interface is assigned/set by the OS</summary><br><b>
 
-False
-</b></details>
 
-<details>
-<summary>Can you have more than one default gateway in a given system?</summary><br><b>
 
-Technically, yes.
-</b></details>
 
 <details>
 <summary>What is telnet and why is it a bad idea to use it in production? (or at all)</summary><br><b>
@@ -2343,10 +3514,7 @@ Invoke-WebRequest -Uri https://example.com
 📖 **Docs:** `man curl` / `man wget`
 </b></details>
 
-<details>
-<summary>What are packet sniffers? Have you used one in the past? If yes, which packet sniffers have you used and for what purpose?</summary><br><b>
-It is a network utility that analyses and may inject tasks into the data-stream travelling over the targeted network.
-</b></details>
+
 
 <details>
 <summary>How to list active connections?</summary><br><b>
@@ -2374,11 +3542,7 @@ ss -tnp 'sport = :443 or dport = :443'
 📖 **Docs:** `man ss` / https://www.kernel.org/doc/html/latest/networking/
 </b></details>
 
-<details>
-<summary>How to trigger neighbor discovery in IPv6?</summary><br><b>
 
-One way would be `ping6 ff02::1`
-</b></details>
 
 <details>
 <summary>What is network interface bonding and do you know how it's performed in Linux?</summary><br><b>
@@ -2409,16 +3573,7 @@ cat /proc/net/bonding/bond0
 📖 **Docs:** https://www.kernel.org/doc/html/latest/networking/bonding.html
 </b></details>
 
-<details>
-<summary>What network bonding modes are there?</summary><br><b>
 
-There a couple of modes:
-
-  * balance-rr: round robing bonding
-  * active-backup: a fault tolerance mode where only one is active
-  * balance-tlb: Adaptive transmit load balancing
-  * balance-alb: Adaptive load balancing
-</b></details>
 
 <details>
 <summary>What is a bridge? How it's added in Linux OS?</summary><br><b>
@@ -2455,16 +3610,34 @@ brctl show
 <a name="questions-linux-dns"></a>
 ### DNS
 
-<details>
-<summary>How to check what is the hostname of the system?</summary><br><b>
 
-`cat /etc/hostname`
-
-You can also run `hostnamectl` or `hostname` but that might print only a temporary hostname. The one in the file is the permanent one.
-</b></details>
 
 <details>
 <summary>What the file <code>/etc/resolv.conf</code> is used for? What does it include?</summary><br><b>
+
+`/etc/resolv.conf` configures DNS resolution — it tells the system which DNS servers to query and how to resolve hostnames.
+
+**Common directives:**
+| Directive | Example | Purpose |
+|-----------|---------|---------|
+| `nameserver` | `nameserver 8.8.8.8` | DNS server IP (up to 3) |
+| `search` | `search example.com` | Domain suffix to append to short names |
+| `domain` | `domain example.com` | Local domain |
+| `options` | `options rotate timeout:1` | Resolver behavior settings |
+
+💡 On modern distros, `/etc/resolv.conf` is often managed by systemd-resolved or NetworkManager (it's a symlink to `/run/systemd/resolve/stub-resolv.conf`). Direct edits will be overwritten.
+
+```bash
+# Check current DNS config
+cat /etc/resolv.conf
+ls -l /etc/resolv.conf    # Check if it is a symlink
+
+# systemd-resolved approach
+resolvectl status
+resolvectl query google.com
+```
+
+📖 **Docs:** `man resolv.conf` / `man systemd-resolved`
 </b></details>
 
 <details>
@@ -2558,10 +3731,44 @@ In Ubuntu it can be done with the `apt` command.
 
 <details>
 <summary>What is an archive? How do you create one in Linux?</summary><br><b>
+
+```bash
+# tar (tape archive) — most common on Linux
+tar -cvf archive.tar /path/to/files/        # Create
+tar -czvf archive.tar.gz /path/to/files/    # Create + gzip compress
+tar -cjvf archive.tar.bz2 /path/to/files/   # Create + bzip2 (smaller)
+tar -cJvf archive.tar.xz /path/to/files/    # Create + xz (best compression)
+
+# zip (cross-platform)
+zip -r archive.zip /path/to/files/
+```
+
+💡 Remember with tar: `c`=create, `x`=extract, `v`=verbose, `f`=file, `z`=gzip, `j`=bzip2, `J`=xz.
+
+📖 **Docs:** `man tar` / `man zip`
 </b></details>
 
 <details>
 <summary>How to extract the content of an archive?</summary><br><b>
+
+```bash
+# tar
+tar -xvf archive.tar                          # Auto-detect format
+tar -xzvf archive.tar.gz
+tar -xjvf archive.tar.bz2
+
+# Extract to specific directory
+tar -xvf archive.tar -C /target/dir/
+
+# List contents without extracting
+tar -tvf archive.tar
+
+# zip
+unzip archive.zip
+unzip archive.zip -d /target/dir/
+```
+
+📖 **Docs:** `man tar` / `man unzip`
 </b></details>
 
 <details>
@@ -2617,6 +3824,24 @@ Upstart: add Upstart init script at /etc/init/service.conf
 
 <details>
 <summary>How to print the shared libraries required by a certain program? What is it useful for?</summary><br><b>
+
+```bash
+# ldd — list dynamic dependencies
+ldd /bin/ls
+ldd /usr/bin/python3
+
+# What it shows:
+#   linux-vdso.so.1  — virtual library (kernel-provided)
+#   libc.so.6        — C standard library
+#   /lib64/ld-linux-x86-64.so.2 — dynamic linker
+```
+
+💡 Useful for:
+* Finding missing libraries ("library not found" errors)
+* Checking if a binary is statically or dynamically linked
+* Security: verifying no unexpected libraries are loaded
+
+📖 **Docs:** `man ldd`
 </b></details>
 
 <details>
@@ -2801,11 +4026,7 @@ dmidecoode
 lsblk
 </b></details>
 
-<details>
-<summary>True or False? In user space, applications don't have full access to hardware resources</summary><br><b>
 
-True. Only in kernel space they have full access to hardware resources.
-</b></details>
 
 <a name="questions-linux-namespaces"></a>
 ### Namespaces
@@ -2822,35 +4043,15 @@ True. Only in kernel space they have full access to hardware resources.
   - Time namespaces: Isolates time machine
 </b></details>
 
-<details>
-<summary>True or False? In every PID (Process ID) namespace the first process assigned with the process id number 1</summary><br><b>
 
-True. Inside the namespace it's PID 1 while to the parent namespace the PID is a different one.
-</b></details>
 
-<details>
-<summary>True or False? In a child PID namespace all processes are aware of parent PID namespace and processes and the parent PID namespace has no visibility of child PID namespace processes</summary><br><b>
 
-False. The opposite is true. Parent PID namespace is aware and has visibility of processes in child PID namespace and child PID namespace has no visibility as to what is going on in the parent PID namespace.
-</b></details>
 
-<details>
-<summary>True or False? By default, when creating two separate network namespaces, a ping from one namespace to another will work fine</summary><br><b>
 
-False. Network namespace has its own interfaces and routing table. There is no way (without creating a bridge for example) for one network namespace to reach another.
-</b></details>
 
-<details>
-<summary>True or False? With UTS namespaces, processes may appear as if they run on different hosts and domains while running on the same host</summary><br><b>
 
-True
-</b></details>
 
-<details>
-<summary>True or False? It's not possible to have a root user with ID 0 in child user namespaces</summary><br><b>
 
-False. In every child user namespace, it's possible to have a separate root user with uid of 0.
-</b></details>
 
 <details>
 <summary>What time namespaces are used for?</summary><br><b>
@@ -2914,11 +4115,25 @@ From Wikipedia: "AWK is domain-specific language designed for text processing an
 
 <details>
 <summary>What the <code>lsof</code> command does? Have you used it? What for?</summary><br><b>
+
+`lsof` (LiSt Open Files) lists all open files and the processes that opened them. In Linux, everything is a file — sockets, pipes, devices, regular files.
+
+```bash
+lsof                    # All open files (needs root for full output)
+lsof -i :80             # Which process is using port 80
+lsof -i tcp:3306        # TCP connections on port 3306
+lsof /var/log/syslog    # Who has this file open
+lsof -p 1234            # All files opened by PID 1234
+lsof -u alice           # Files opened by user alice
+lsof +D /tmp            # Files opened under /tmp recursively
+```
+
+💡 Common use: `lsof -i :port` to find what's blocking a port you want to use.
+
+📖 **Docs:** `man lsof`
 </b></details>
 
-<details>
-<summary>What is the difference between find and locate?</summary><br><b>
-</b></details>
+
 
 <details>
 <summary>How a user process performs a privileged operation, such as reading from the disk?</summary><br><b>
@@ -2931,6 +4146,30 @@ Using system calls
 
 <details>
 <summary>What is a system call? What system calls are you familiar with?</summary><br><b>
+
+A **system call** (syscall) is the interface between user-space applications and the kernel. When a program needs to access hardware, allocate memory, create files, or communicate over the network, it must ask the kernel via a syscall.
+
+**Common system calls by category:**
+
+| Category | Syscalls |
+|----------|----------|
+| **Process** | `fork()`, `execve()`, `exit()`, `wait()`, `kill()` |
+| **File I/O** | `open()`, `read()`, `write()`, `close()`, `lseek()`, `stat()` |
+| **Memory** | `mmap()`, `brk()`, `sbrk()` |
+| **Network** | `socket()`, `bind()`, `listen()`, `accept()`, `connect()` |
+| **Filesystem** | `mount()`, `chdir()`, `chmod()`, `chown()` |
+
+```bash
+# Trace syscalls made by a command
+strace ls
+strace -c ls              # Summary count
+strace -e trace=open,read,write ls  # Filter specific syscalls
+
+# Count syscalls per category
+strace -c -S calls ls     # Sort by call count
+```
+
+📖 **Docs:** `man 2 syscalls` / `man strace`
 </b></details>
 
 <details>
@@ -2980,11 +4219,7 @@ The waitpid() is a non-blocking version of the wait() function.<br>
 It also supports using library routine (e.g. system()) to wait a child process without messing up with other children processes for which the process has not waited.
 </b></details>
 
-<details>
-<summary>True or False? The wait() system call won't return until the child process has run and exited</summary><br><b>
 
-True in most cases though there are cases where wait() returns before the child exits.
-</b></details>
 
 <details>
 <summary>Explain the exec() system call</summary><br><b>
@@ -2993,16 +4228,9 @@ It transforms the current running program into another program.<br>
 Given the name of an executable and some arguments, it loads the code and static data from the specified executable and overwrites its current code segment and current static code data. After initializing its memory space (like stack and heap) the OS runs the program passing any arguments as the argv of that process.
 </b></details>
 
-<details>
-<summary>True or False? A successful call to exec() never returns</summary><br><b>
 
-True<br>
-Since a successful exec replace the current process, it can't return anything to the process that made the call.
-</b></details>
 
-<details>
-<summary>What system call is used for listing files?</summary><br><b>
-</b></details>
+
 
 <details>
 <summary>What system calls are used for creating a new process?</summary><br><b>
@@ -3016,9 +4244,7 @@ fork(), exec() and the wait() system call is also included in this workflow.
 Executes a program. The program is passed as a filename (or path) and must be a binary executable or a script.
 </b></details>
 
-<details>
-<summary>What is the return value of malloc?</summary><br><b>
-</b></details>
+
 
 <details>
 <summary>Explain the pipe() system call. What does it used for?</summary><br><b>
@@ -3045,14 +4271,23 @@ Notes:
 
 <details>
 <summary>What happens when you execute <code>ls -l *.log</code>?</summary><br><b>
+
+1. **Shell expands the wildcard** — `*.log` is replaced with all matching filenames (e.g., `app.log error.log`)
+2. If no `.log` files exist, Bash passes `*.log` literally (by default), and `ls` reports "No such file or directory"
+3. If matches exist, `ls -l app.log error.log` runs, showing a long-format listing of each
+
+💡 The command `ls` never sees `*` — globbing is handled entirely by the shell before fork+exec.
+
+```bash
+# Set nullglob to silently produce nothing if no match
+shopt -s nullglob
+# Set failglob to error if no match
+shopt -s failglob
+```
 </b></details>
 
 <details>
 <summary>What readdir() system call does?</summary><br><b>
-</b></details>
-
-<details>
-<summary>What exactly the command <code>alias x=y</code> does?</summary><br><b>
 </b></details>
 
 <details>
@@ -3092,56 +4327,129 @@ read(5, "file content")
 These system calls are reading the file <code>/my/file</code> and 5 is the file descriptor number.
 </b></details>
 
-<details>
-<summary>Describe three different ways to remove a file (or its content)</summary><br><b>
-</b></details>
+
 
 <details>
 <summary>What is the difference between a process and a thread?</summary><br><b>
+
+| | Process | Thread |
+|---|---|---|
+| **Definition** | An independent program in execution | A unit of execution within a process |
+| **Memory** | Separate address space (isolated) | Shares address space with sibling threads |
+| **Creation cost** | High (fork + exec, new page tables) | Low (just a new stack + TCB) |
+| **IPC** | Requires IPC mechanisms (pipes, sockets, shared memory) | Direct access to shared memory (need synchronization) |
+| **Crash impact** | One process crash doesn't affect others | One thread crash might bring down the entire process |
+| **Context switch** | Heavy (switch MMU, flush TLB) | Lightweight (same address space) |
+| **Linux view** | Created via `fork()` + `exec()` | Created via `clone()` — threads share more with parent |
+
+💡 In Linux, both processes and threads are implemented via `clone()`. The difference is how much is shared (flags like `CLONE_VM`, `CLONE_FILES`).
+
+```bash
+# See threads of a process
+ps -eLf | grep <process_name>
+ls /proc/<PID>/task/        # One directory per thread
+```
+
+📖 **Docs:** `man 2 fork` / `man 2 clone` / `man 7 pthreads`
 </b></details>
 
-<details>
-<summary>What is context switch?</summary><br><b>
 
-From [wikipedia](https://en.wikipedia.org/wiki/Context_switch): a context switch is the process of storing the state of a process or thread, so that it can be restored and resume execution at a later point
-</b></details>
 
 <details>
 <summary>You found there is a server with high CPU load but you didn't find a process with high CPU. How is that possible?</summary><br><b>
+
+Several explanations:
+
+1. **Many short-lived processes** — A process spawns and exits faster than `top` refreshes. Look for fork bombs or cron jobs.
+2. **Processes in D-state (uninterruptible sleep)** — They consume no CPU but count toward load. Usually waiting on storage/NFS.
+3. **Interrupt handling** — High interrupt rate (network, storage) consumes CPU in kernel context, not visible as a process.
+4. **CPU stolen by hypervisor** — In VMs, `%st` (steal time) in `top` shows CPU taken by the hypervisor.
+
+```bash
+# Check for D-state processes
+ps -eo pid,stat,comm | grep "^.* D"
+# Check CPU steal time (virtualized environment)
+top -bn1 | grep "%st"
+# Check interrupt rate
+cat /proc/interrupts | head -10
+# Check for short-lived processes with execsnoop (bcc-tools)
+sudo execsnoop-bpfcc
+```
 </b></details>
 
 <a name="questions-linux-advanced-networking"></a>
 ### Advanced Networking
 
 <details>
-<summary>When you run <code>ip a</code> you see there is a device called 'lo'. What is it and why do we need it?</summary><br><b>
-</b></details>
 
-<details>
-<summary>What the <code>traceroute</code> command does? How does it works?</summary><br><b>
 
-Another common way to task this questions is "what part of the tcp header does traceroute modify?"
-</b></details>
 
-<details>
-<summary>What is network bonding? What types are you familiar with?</summary><br><b>
-</b></details>
 
 <details>
 <summary>How to link two separate network namespaces so you can ping an interface on one namespace from the second one?</summary><br><b>
+
+Use a **veth pair** — a virtual Ethernet cable with one end in each namespace:
+
+```bash
+# Create two namespaces
+sudo ip netns add ns1
+sudo ip netns add ns2
+
+# Create veth pair
+sudo ip link add veth0 type veth peer name veth1
+
+# Move each end to a namespace
+sudo ip link set veth0 netns ns1
+sudo ip link set veth1 netns ns2
+
+# Assign IPs and bring up
+sudo ip netns exec ns1 ip addr add 10.0.0.1/24 dev veth0
+sudo ip netns exec ns1 ip link set veth0 up
+sudo ip netns exec ns2 ip addr add 10.0.0.2/24 dev veth1
+sudo ip netns exec ns2 ip link set veth1 up
+
+# Now they can ping each other
+sudo ip netns exec ns1 ping 10.0.0.2
+```
 </b></details>
 
 <details>
 <summary>What are cgroups?</summary><br><b>
+
+**cgroups (Control Groups)** is a Linux kernel feature that limits, accounts for, and isolates resource usage (CPU, memory, disk I/O, network) of process groups.
+
+**Why cgroups matter:**
+* **Containers** (Docker, Podman, Kubernetes) use cgroups to enforce resource limits
+* **systemd** uses cgroups to organize and track services
+* Prevents a single process from consuming all system resources
+
+**Two versions:**
+* **cgroups v1** — Multiple hierarchies, one controller per hierarchy
+* **cgroups v2** — Unified hierarchy (default on modern distros)
+
+```bash
+# Check cgroup version
+mount | grep cgroup
+cat /proc/filesystems | grep cgroup
+
+# See process cgroup membership
+cat /proc/self/cgroup
+
+# systemd-cgtop: live resource usage per cgroup (like top for cgroups)
+systemd-cgtop
+
+# Docker: limit a container to 512 MB RAM, 0.5 CPU
+docker run --memory=512m --cpus=0.5 myimage
+```
+
+📖 **Docs:** https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html
 </b></details>
 
 <details>
 <summary>Explain Process Descriptor and Task Structure</summary><br><b>
 </b></details>
 
-<details>
-<summary>What are the differences between threads and processes?</summary><br><b>
-</b></details>
+
 
 <details>
 <summary>Explain Kernel Threads</summary><br><b>
@@ -3181,24 +4489,16 @@ MemFree - The amount of unused physical RAM in your system
 MemAvailable - The amount of available memory for new workloads (without pushing system to use swap) based on MemFree, Active(file), Inactive(file), and SReclaimable.
 </b></details>
 
-<details>
-<summary>What is the difference between paging and swapping?</summary><br><b>
-</b></details>
 
-<details>
-<summary>Explain what is OOM killer</summary><br><b>
-</b></details>
+
+
 
 <a name="questions-linux-distributions"></a>
 ### Distributions
 
-<details>
-<summary>What is a Linux distribution?</summary><br><b>
-</b></details>
 
-<details>
-<summary>What Linux distributions are you familiar with?</summary><br><b>
-</b></details>
+
+
 
 <details>
 <summary>What are the components of a Linux distribution?</summary><br><b>
@@ -3221,20 +4521,9 @@ MemAvailable - The amount of available memory for new workloads (without pushing
 <a name="questions-linux-misc"></a>
 ### Misc
 
-<details>
-<summary>What is a Linux distribution?</summary><br><b>
 
-* A collection of packages - kernel, GNU, third party apps, ...
-* Sometimes distributions store some information on the distribution in `/etc/*-release` file
-    * For example for Red Hat distribution it will be `/etc/redhat-release` and for Amazon it will be `/etc/os-release`
-    * `lsb_release` is a common command you can use in multiple different distributions
-</b></details>
 
-<details>
-<summary>Name 5 commands which are two letters long</summary><br><b>
 
-ls, wc, dd, df, du, ps, ip, cp, cd ...
-</b></details>
 
 <details>
 <summary>What ways are there for creating a new empty file?</summary><br><b>
@@ -3249,28 +4538,29 @@ ls, wc, dd, df, du, ps, ip, cp, cd ...
 $OLDPWD
 </b></details>
 
-<details>
-<summary>List three ways to print all the files in the current directory</summary><br><b>
 
-* ls
-* find .
-* echo *
-</b></details>
 
-<details>
-<summary>How to count the number of lines in a file? What about words?</summary><br><b>
 
-For these we can use `wc` command.
-
-1. To count the number of lines in file
-```wc -l```
-
-2. To count the number of words in file
-```wc -w```
-</b></details>
 
 <details>
 <summary>You define x=2 in /etc/bashrc and x=6 ~/.bashrc you then login to the system. What would be the value of x?</summary><br><b>
+
+x = 6. Bash startup files are sourced in this order for a login shell:
+
+1. `/etc/profile` → `/etc/bashrc` (system-wide, sourced first)
+2. `~/.bash_profile` (or `~/.bash_login` or `~/.profile`, whichever exists first)
+3. `~/.bashrc` (sourced by `~/.bash_profile` in most setups)
+
+Since `~/.bashrc` is sourced last, `x=6` overrides `x=2`. The last assignment wins.
+
+💡 Login shell vs non-login shell matters:
+* Login (SSH, console): reads `/etc/profile` → `~/.bash_profile` → `~/.bashrc`
+* Non-login (new terminal tab): reads only `~/.bashrc`
+
+```bash
+echo $0               # -bash = login shell; bash = non-login
+shopt login_shell     # Check if current shell is login
+```
 </b></details>
 
 <details>
@@ -3281,10 +4571,62 @@ A good answer can be found [here](https://askubuntu.com/questions/9325/what-is-t
 
 <details>
 <summary>Explain "environment variables". How do you list all environment variables?</summary><br><b>
+
+**Environment variables** are key=value pairs that influence process behavior and are inherited by child processes.
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `PATH` | Directories for executables | `/usr/local/bin:/usr/bin:/bin` |
+| `HOME` | User's home directory | `/home/user` |
+| `USER` | Current username | `alice` |
+| `SHELL` | Default shell | `/bin/bash` |
+| `LANG` | Locale settings | `en_US.UTF-8` |
+
+```bash
+# List all
+env / printenv
+
+# Print one variable
+echo $HOME
+
+# Set for current shell only
+MYVAR=hello
+
+# Set + export to child processes
+export MYVAR=hello
+
+# Persist: add to ~/.bashrc or ~/.profile
+echo 'export PATH="$PATH:/opt/bin"' >> ~/.bashrc
+```
+
+📖 **Docs:** `man 7 environ` / `man env`
 </b></details>
 
 <details>
 <summary>What is a TTY device?</summary><br><b>
+
+**TTY (Teletypewriter)** originally referred to physical terminals connected via serial lines. Today in Linux, "TTY" means a terminal device — any interface where a user or program can interact with text input/output.
+
+**Types of TTY in Linux:**
+| Type | Path | Use |
+|------|------|-----|
+| **Virtual console** | `/dev/tty1`-`/dev/tty6` | Text consoles accessed via Ctrl+Alt+F1-F6 |
+| **Pseudo-terminal (PTY)** | `/dev/pts/0`, `/dev/pts/1`... | Terminal emulator windows, SSH sessions |
+| **Serial console** | `/dev/ttyS0`, `/dev/ttyUSB0` | Physical serial ports, embedded devices |
+
+```bash
+# Which TTY are you on?
+tty
+
+# List all logged-in users and their TTYs
+who
+w
+
+# Send a message to another TTY
+echo "hello" | sudo tee /dev/pts/2
+```
+
+📖 **Docs:** `man tty` / `man 4 console` / `man 7 pty`
 </b></details>
 
 <details>
@@ -3299,9 +4641,7 @@ A good answer can be found [here](https://askubuntu.com/questions/9325/what-is-t
 It's used in commands to mark the end of commands options. One common example is when used with git to discard local changes: `git checkout -- some_file`
 </b></details>
 
-<details>
-<summary>Wildcards are implemented on user or kernel space?</summary><br><b>
-</b></details>
+
 
 <details>
 <summary>If I plug a new device into a Linux machine, where on the system, a new device entry/file will be created?</summary><br><b>
@@ -3311,19 +4651,35 @@ It's used in commands to mark the end of commands options. One common example is
 
 <details>
 <summary>Why there are different sections in man? What is the difference between the sections?</summary><br><b>
+
+Man pages are organized into 8 numbered sections, each for a different category of documentation:
+
+| Section | Content | Example |
+|---------|---------|---------|
+| **1** | User commands (executables) | `man 1 ls` |
+| **2** | System calls (kernel API) | `man 2 open` |
+| **3** | Library functions (libc) | `man 3 printf` |
+| **4** | Device files and drivers | `man 4 console` |
+| **5** | File formats and config files | `man 5 resolv.conf` |
+| **6** | Games | `man 6 fortune` |
+| **7** | Miscellaneous (overviews, conventions) | `man 7 signal` |
+| **8** | System administration commands (root) | `man 8 mount` |
+
+💡 Some topics appear in multiple sections with different meanings — e.g., `open` is both a command (section 1) and a system call (section 2).
+
+```bash
+# Find which section a page is in
+whatis open
+man -f open
+
+# Search all sections
+man -a open
+```
+
+📖 **Docs:** `man man`
 </b></details>
 
-<details>
-<summary>What is User-mode Linux?</summary><br><b>
-In Linux, user mode is a restricted operating mode in which a user's application or process runs. User mode is a non-privileged mode that prevents user-level processes from accessing sensitive system resources directly.
 
-In user mode, an application can only access hardware resources indirectly, by calling system services or functions provided by the operating system. This ensures that the system's security and stability are maintained by preventing user processes from interfering with or damaging system resources.
-
-Additionally, user mode also provides memory protection to prevent applications from accessing unauthorized memory locations. This is done by assigning each process its own virtual memory space, which is isolated from other processes.
-
-In contrast to user mode, kernel mode is a privileged operating mode in which the operating system's kernel has full access to system resources, and can perform low-level operations, such as accessing hardware devices and managing system resources directly.
-
-</b></details>
 
 <details>
 <summary>Under which license Linux is distributed? </summary><br><b>
