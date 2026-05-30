@@ -3,6 +3,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   ArrowLeft,
   Search,
@@ -377,8 +379,98 @@ function QuestionCard({
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="border-t border-border/50 px-4 py-4 ml-7 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {item.answer}
+              <div className="border-t border-border/50 px-4 py-4 ml-7 text-sm text-muted-foreground leading-relaxed answer-content">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || "");
+                      const isInline = !match && !String(children).includes("\n");
+                      if (isInline) {
+                        return (
+                          <code className="bg-muted/80 rounded px-1 py-0.5 text-xs font-mono" {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+                      return (
+                        <pre className="bg-muted/80 rounded-lg p-4 overflow-x-auto text-xs font-mono my-3">
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        </pre>
+                      );
+                    },
+                    a({ href, children }) {
+                      return (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan hover:underline"
+                        >
+                          {children}
+                        </a>
+                      );
+                    },
+                    table({ children }) {
+                      return (
+                        <div className="overflow-x-auto my-3">
+                          <table className="min-w-full border-collapse border border-border/50 text-xs">
+                            {children}
+                          </table>
+                        </div>
+                      );
+                    },
+                    th({ children }) {
+                      return (
+                        <th className="border border-border/50 px-3 py-1.5 bg-muted/50 text-left font-semibold">
+                          {children}
+                        </th>
+                      );
+                    },
+                    td({ children }) {
+                      return (
+                        <td className="border border-border/50 px-3 py-1.5">
+                          {children}
+                        </td>
+                      );
+                    },
+                    ul({ children }) {
+                      return <ul className="list-disc pl-5 my-2 space-y-0.5">{children}</ul>;
+                    },
+                    ol({ children }) {
+                      return <ol className="list-decimal pl-5 my-2 space-y-0.5">{children}</ol>;
+                    },
+                    p({ children }) {
+                      return <p className="my-1.5">{children}</p>;
+                    },
+                    strong({ children }) {
+                      return <strong className="font-semibold text-foreground/90">{children}</strong>;
+                    },
+                    h1({ children }) {
+                      return <h1 className="text-base font-bold mt-4 mb-2 text-foreground/90">{children}</h1>;
+                    },
+                    h2({ children }) {
+                      return <h2 className="text-sm font-bold mt-3 mb-1.5 text-foreground/90">{children}</h2>;
+                    },
+                    h3({ children }) {
+                      return <h3 className="text-sm font-semibold mt-3 mb-1 text-foreground/85">{children}</h3>;
+                    },
+                    hr() {
+                      return <hr className="my-3 border-border/50" />;
+                    },
+                    blockquote({ children }) {
+                      return (
+                        <blockquote className="border-l-2 border-cyan/50 pl-3 my-2 italic text-muted-foreground/80">
+                          {children}
+                        </blockquote>
+                      );
+                    },
+                  }}
+                >
+                  {item.answer}
+                </ReactMarkdown>
               </div>
             </motion.div>
           )}

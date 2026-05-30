@@ -228,81 +228,401 @@ False. The minimum is 2 while the maximum is 6.
 <details>
 <summary>What is IAM? What are some of its features?</summary><br><b>
 
-In short, it's used for managing users, groups, access policies & roles
-Full explanation can be found [here](https://aws.amazon.com/iam)
+IAM (Identity and Access Management) is AWS's identity management service used to control access to AWS resources securely. Its core components:
+
+* **Users** — Individual people or applications with long-term credentials
+* **Groups** — Collections of users for bulk permission assignment
+* **Roles** — Temporary credentials for services or cross-account access (uses STS)
+* **Policies** — JSON documents defining allowed/denied actions on specific resources
+
+Key features:
+* **Global service** — Not region-scoped; one IAM for the entire account
+* **Fine-grained permissions** — Control down to individual API actions
+* **Federation support** — SAML 2.0, OpenID Connect for corporate SSO
+* **Free** — IAM itself has no additional cost (only the resources it governs may cost)
+
+📖 **Docs:**
+* IAM Overview: https://aws.amazon.com/iam/
+* IAM Best Practices: https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html
+* IAM FAQs: https://aws.amazon.com/iam/faqs/
+
+🔧 **CLI Quickstart:**
+```bash
+# List all IAM users in the account
+aws iam list-users
+
+# List custom (customer-managed) policies
+aws iam list-policies --scope Local
+
+# Check which groups a user belongs to
+aws iam list-groups-for-user --user-name Alice
+
+# Get details of a specific policy
+aws iam get-policy --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+```
 </b></details>
 
 <details>
 <summary>True or False? IAM configuration is defined globally and not per region</summary><br><b>
 
-True
+True. IAM is a global service — users, groups, roles, and policies are available across all AWS regions automatically.
+
+This means:
+* A user created in IAM can access services in any region (subject to their policy)
+* IAM data is physically replicated across AWS infrastructure
+* Unlike regional services (EC2, RDS, S3 buckets), you don't select a region when working with IAM
+
+Other global AWS services include: Route 53, CloudFront, WAF, and AWS Organizations.
+
+🔧 **Verify it yourself:**
+```bash
+# These return identical results regardless of --region
+aws iam list-users --region us-east-1
+aws iam list-users --region ap-southeast-1
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html
 </b></details>
 
 <details>
 <summary>True or False? When creating an AWS account, root account is created by default. This is the recommended account to use and share in your organization</summary><br><b>
 
-False. Instead of using the root account, you should be creating users and use them.
+False. The root account (created with your email) has unrestricted access to everything in the account. AWS strongly recommends:
+
+* **Never use the root account for daily tasks** — create individual IAM users instead
+* **Delete root access keys** if they exist
+* **Enable MFA on the root account** — this is the single most important security step
+* **Lock away root credentials** — only use them for tasks that require root (e.g., closing the account, changing payment methods)
+
+🔧 **Check your root account security:**
+```bash
+# Get the account summary (MFA status, access keys on root, etc.)
+aws iam get-account-summary
+
+# List all IAM users (root account won't appear here)
+aws iam list-users
+
+# Generate a credential report to audit all users including root
+aws iam generate-credential-report
+aws iam get-credential-report --output text | base64 -d
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#lock-away-credentials
 </b></details>
 
 <details>
 <summary>True or False? Groups in AWS IAM, can contain only users and not other groups</summary><br><b>
 
-True
+True. IAM groups can only contain users, not other groups (no nested groups).
+
+Key points about IAM groups:
+* Groups are simply a way to assign the same permissions to multiple users
+* A group cannot be a member of another group
+* Users can belong to up to 10 groups (default limit, can be increased)
+* Groups cannot be identified as a Principal in a resource-based policy (only users and roles can)
+
+💡 This is different from Active Directory or GCP IAM where group nesting is supported.
+
+🔧 **CLI:**
+```bash
+# Create a group
+aws iam create-group --group-name DevOps
+
+# Add a user to a group
+aws iam add-user-to-group --group-name DevOps --user-name Alice
+
+# List members of a group
+aws iam get-group --group-name DevOps
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/id_groups.html
 </b></details>
 
 <details>
 <summary>True or False? Users in AWS IAM, can belong only to a single group</summary><br><b>
 
-False. Users can belong to multiple groups.
+False. A user can belong to multiple IAM groups (up to 10 by default, though this is a soft limit).
+
+A user's effective permissions are the **union** of all permissions from:
+1. Policies directly attached to the user
+2. Policies attached to any group the user belongs to
+3. Permissions granted through roles the user assumes
+
+A **Deny** always overrides an **Allow** — if any policy explicitly denies an action, it's denied.
+
+🔧 **CLI:**
+```bash
+# See all groups a user belongs to
+aws iam list-groups-for-user --user-name Alice
+
+# List all users and their group memberships
+for user in $(aws iam list-users --query 'Users[*].UserName' --output text); do
+  echo "=== $user ==="
+  aws iam list-groups-for-user --user-name "$user" --query 'Groups[*].GroupName' --output text
+done
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/id_groups.html
 </b></details>
 
 <details>
 <summary>What are some best practices regarding IAM in AWS?</summary><br><b>
 
-* Delete root account access keys and don't use root account regularly
-* Create IAM user for any physical user. Don't share users.
-* Apply "least privilege principle": give users only the permissions they need, nothing more than that.
-* Set up MFA and consider enforcing using it
-* Make use of groups to assign permissions ( user -> group -> permissions )
+* **Lock away the root account** — Delete root access keys, enable MFA, never use root for daily work
+* **One human = one IAM user** — Don't share user credentials across team members
+* **Apply least privilege principle** — Grant only the permissions needed for the job, nothing more. Start with minimal permissions and expand as needed
+* **Use groups for permission management** — Assign permissions to groups, then add users to groups (User → Group → Policy)
+* **Enforce MFA** — Require multi-factor authentication, especially for privileged users
+* **Use IAM Roles for applications on EC2/Lambda/ECS** — Never hardcode access keys in application code
+* **Rotate access keys regularly** — Automate key rotation for programmatic access
+* **Enable IAM Access Analyzer** — Identifies resources shared with external entities
+* **Use permission boundaries** — Set guardrails to limit the maximum permissions an IAM entity can have
+* **Monitor with CloudTrail** — Track IAM API calls for auditing and security analysis
+
+🔧 **Quick security audit commands:**
+```bash
+# Check account security status (MFA, access keys age, etc.)
+aws iam get-account-summary
+
+# Find users with access keys older than 90 days
+aws iam list-access-keys --user-name Alice --query 'AccessKeyMetadata[?CreateDate<`2025-01-01`]'
+
+# List users who have never logged in to the console
+aws iam list-users --query 'Users[?PasswordLastUsed==`null`].UserName' --output text
+
+# Check if MFA is enabled for a user
+aws iam list-mfa-devices --user-name Alice
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html
 </b></details>
 
 <details>
 <summary>What permissions does a new user have?</summary><br><b>
 
-Only a login access.
+A newly created IAM user has **no permissions at all** — they can only log in (if a password is set). This is the "deny by default" model.
+
+Without explicit permissions (via group membership or directly attached policies), the user cannot:
+* List or access any AWS resources
+* Call any AWS API action
+* Access the management console beyond the login page
+
+This enforces the **principle of least privilege** — you start with nothing and add only what's needed.
+
+🔧 **CLI — Create and verify a new user:**
+```bash
+# Create a user (no permissions by default)
+aws iam create-user --user-name Alice
+
+# Try to list S3 buckets as this user (will fail with AccessDenied)
+aws s3 ls --profile alice
+
+# Attach an admin policy to the user
+aws iam attach-user-policy \
+  --user-name Alice \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+
+# Now the user can access everything
+aws s3 ls --profile alice
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html
 </b></details>
 
 <details>
 <summary>True or False? If a user in AWS is using password for authenticating, he doesn't needs to enable MFA</summary><br><b>
 
-False(!). MFA is a great additional security layer to use for authentication.
+False! MFA (Multi-Factor Authentication) adds a critical second layer beyond a password. A password alone is not enough — if it's compromised, the attacker gets direct access. MFA requires something you know (password) + something you have (virtual MFA device, hardware key, or U2F security key).
+
+AWS MFA options:
+* **Virtual MFA** — Authenticator apps like Google Authenticator, Authy (free)
+* **Hardware MFA** — Physical key fob such as Gemalto
+* **U2F / Passkey** — YubiKey or similar FIDO-compliant devices (supports multiple users per device)
+
+💡 Account-level best practice: create an IAM policy that **requires** MFA for all console users and attach it to groups.
+
+🔧 **CLI — Enforce MFA with a policy:**
+```bash
+# List MFA devices for a user (empty = no MFA)
+aws iam list-mfa-devices --user-name Alice
+
+# Enable a virtual MFA device (simplified — actual setup requires QR code scan)
+aws iam create-virtual-mfa-device --virtual-mfa-device-name AliceMFA
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa.html
 </b></details>
 
 <details>
 <summary>What ways are there to access AWS?</summary><br><b>
 
-  * AWS Management Console
-  * AWS CLI
-  * AWS SDK
+There are four main ways to interact with AWS:
+
+| Method | Description | Best For |
+|--------|-------------|----------|
+| **AWS Management Console** | Web-based GUI at https://console.aws.amazon.com | Beginners, visual monitoring, quick actions |
+| **AWS CLI** | Command-line tool (`aws` command) | Automation, scripting, DevOps workflows |
+| **AWS SDK** | Language-specific libraries (Python/boto3, JS, Go, Java, etc.) | Application development |
+| **IaC Tools** | CloudFormation, Terraform, Pulumi, CDK | Infrastructure provisioning |
+
+🔧 **CLI — Install and configure:**
+```bash
+# Install AWS CLI v2 (macOS)
+brew install awscli
+
+# Install AWS CLI v2 (Linux)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip && sudo ./aws/install
+
+# Configure with your credentials
+aws configure
+# Enter: Access Key ID, Secret Access Key, Default region, Output format (json/yaml/table)
+```
+
+🔧 **SDK example (Python/boto3):**
+```python
+import boto3
+
+s3 = boto3.client('s3')
+buckets = s3.list_buckets()
+for bucket in buckets['Buckets']:
+    print(bucket['Name'])
+```
+
+📖 **Docs:**
+* CLI: https://docs.aws.amazon.com/cli/latest/userguide/
+* SDKs: https://aws.amazon.com/developer/tools/
 </b></details>
 
 <details>
 <summary>What are Roles?</summary><br><b>
 
-[AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html): "An IAM role is an IAM identity that you can create in your account that has specific permissions...it is an AWS identity with permission policies that determine what the identity can and cannot do in AWS."
-For example, you can make use of a role which allows EC2 service to access s3 buckets (read and write).
+An IAM role is an identity with permissions, like a user, but **without long-term credentials**. Instead, it provides **temporary credentials** via AWS STS (Security Token Service).
+
+**Role vs User:**
+| | IAM User | IAM Role |
+|---|---|---|
+| Credentials | Long-lived (access keys, password) | Temporary (STS token, max 36h) |
+| Who uses it | One person / one application | Services, cross-account, federation |
+| Key management | Rotate manually or via automation | AWS handles rotation automatically |
+
+**Common scenarios:**
+* **EC2 instance → S3** — Attach a role to EC2, app uses temporary credentials automatically
+* **Lambda → DynamoDB** — Execution role grants Lambda permissions to read/write
+* **Cross-account access** — Role in account B trusts account A to assume it
+* **AWS service acting on your behalf** — E.g., CodeBuild needs permissions to push to ECR
+
+🔧 **CLI — Create and assume a role:**
+```bash
+# Create a role for EC2 to access S3
+aws iam create-role \
+  --role-name EC2S3ReadOnly \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"Service": "ec2.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }]
+  }'
+
+# Attach S3 read-only managed policy to the role
+aws iam attach-role-policy \
+  --role-name EC2S3ReadOnly \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+# List policies attached to a role
+aws iam list-attached-role-policies --role-name EC2S3ReadOnly
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
 </b></details>
 
 <details>
 <summary>What are Policies?</summary><br><b>
 
-Policies documents used to give permissions as to what a user, group or role are able to do. Their format is JSON.
+An IAM policy is a JSON document that defines permissions — it says who can do what to which resources under what conditions.
+
+**Policy types:**
+| Type | Description | Example |
+|------|-------------|---------|
+| **AWS Managed** | Created and maintained by AWS | `AdministratorAccess`, `AmazonS3ReadOnlyAccess` |
+| **Customer Managed** | Created by you, reusable across entities | `DevTeamEC2Policy` |
+| **Inline** | Embedded directly on one user/group/role | One-off exception for a specific user |
+
+**Evaluation logic:**
+1. Default = **Deny** (implicit)
+2. If any policy says **Allow** and none says **Deny** → Allowed
+3. If any policy says **Deny** (explicit) → Denied (always wins)
+4. Permissions are the **union** of all applicable policies
+
+🔧 **CLI:**
+```bash
+# List all IAM policies in the account (AWS-managed + custom)
+aws iam list-policies
+
+# List only custom (customer-managed) policies
+aws iam list-policies --scope Local
+
+# Show the JSON document of a policy
+aws iam get-policy-version \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
+  --version-id v1
+
+# Create a custom policy
+aws iam create-policy \
+  --policy-name S3ListOnly \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Action": ["s3:ListAllMyBuckets", "s3:GetBucketLocation"],
+      "Resource": "*"
+    }]
+  }'
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html
 </b></details>
 
 <details>
 <summary>A user is unable to access an s3 bucket. What might be the problem?</summary><br><b>
 
-There can be several reasons for that. One of them is lack of policy. To solve that, the admin has to attach the user with a policy what allows him to access the s3 bucket.
+Multiple layers can block S3 access. Check these in order:
+
+1. **IAM Policy** — Is there an explicit Allow on the user/group for the required S3 actions? Does an explicit Deny override it?
+2. **S3 Bucket Policy** — Does the bucket-level policy allow this IAM user/role? (Resource-based policies work alongside IAM policies)
+3. **S3 Block Public Access** — Are public access block settings on the bucket/account overriding?
+4. **VPC Endpoint Policy (if applicable)** — If accessing S3 via VPC Endpoint, does the endpoint policy allow this bucket?
+5. **SCP (Service Control Policy)** — Is there an organization-level SCP that denies S3 access?
+6. **Permission Boundary** — Does the user/role have a permission boundary limiting maximum permissions?
+
+💡 **The evaluation is the intersection**: IAM Policy ✗ Bucket Policy ✗ SCP ✗ Permission Boundary
+
+🔧 **Troubleshooting commands:**
+```bash
+# Check if the user can access a specific bucket
+aws s3 ls s3://target-bucket/ --profile problem-user
+
+# Simulate permissions — does this user have s3:ListBucket on the target?
+aws iam simulate-principal-policy \
+  --policy-source-arn arn:aws:iam::123456789012:user/problem-user \
+  --action-names "s3:ListBucket" \
+  --resource-arns "arn:aws:s3:::target-bucket"
+
+# Check the bucket's policy
+aws s3api get-bucket-policy --bucket target-bucket
+
+# Check the user's attached policies
+aws iam list-attached-user-policies --user-name problem-user
+
+# Check if SCP or permission boundary is the issue
+aws iam list-user-policies --user-name problem-user
+```
+
+📖 **Docs:** 
+* IAM Policy Simulator: https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_testing-policies.html
+* S3 Troubleshooting: https://docs.aws.amazon.com/AmazonS3/latest/userguide/troubleshooting.html
 </b></details>
 
 <details>
@@ -311,19 +631,70 @@ There can be several reasons for that. One of them is lack of policy. To solve t
   - Grant access between two services/resources?
   - Grant user access to resources/services?</summary><br><b>
 
-  * Role
-  * Policy
+* **Role** — for granting access between two services/resources. E.g., an EC2 instance assumes a role to access S3. The role provides temporary credentials automatically rotated by AWS STS.
+
+* **Policy** — for granting user access to resources/services. Attach the policy directly to the user or (better practice) to a group the user belongs to.
+
+💡 **Interview tip:** The key distinction is *who* vs *what*. A Role answers "who is allowed to act" (a service, a cross-account principal). A Policy answers "what actions are allowed on which resources."
+
+🔧 **CLI — See the difference in action:**
+```bash
+# Role: create for EC2 → S3 inter-service access
+aws iam create-role --role-name MyEC2Role --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
+
+# Policy: attach to a user to grant them access
+aws iam attach-user-policy --user-name Alice --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+```
+
+📖 **Docs:**
+* IAM Roles: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+* IAM Policies: https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html
 </b></details>
 
 <details>
 <summary>What statements AWS IAM policies are consist of?</summary><br><b>
 
-* Sid: identifier of the statement (optional)
-* Effect: allow or deny access
-* Action: list of actions (to deny or allow)
-* Resource: a list of resources to which the actions are applied
-* Principal: role or account or user to which to apply the policy
-* Condition: conditions to determine when the policy is applied (optional)
+An IAM policy statement consists of these elements:
+
+| Element | Required? | Description |
+|---------|-----------|-------------|
+| **Sid** | No | Statement ID — a descriptive name for the statement |
+| **Effect** | Yes | `Allow` or `Deny` — what happens when conditions match |
+| **Action** | Yes | List of AWS API actions, e.g., `s3:ListBucket`, `ec2:RunInstances` |
+| **Resource** | Yes | Which resources the actions apply to (ARNs), or `*` for all |
+| **Principal** | Only for resource-based policies | Who the policy applies to (user, role, account, service) |
+| **Condition** | No | When the policy applies — based on tags, IP ranges, time, MFA status, etc. |
+
+**Policy types by identity:**
+* **Identity-based** (attached to user/group/role) — Principal is NOT needed (it's implied)
+* **Resource-based** (attached to S3 bucket, SQS queue, etc.) — Principal IS required
+
+💡 **Condition examples:**
+```json
+"Condition": {
+  "IpAddress": {"aws:SourceIp": "10.0.0.0/8"},       // from corporate VPN only
+  "Bool": {"aws:MultiFactorAuthPresent": "true"},      // MFA must be active
+  "StringEquals": {"aws:RequestedRegion": "us-east-1"} // restrict to one region
+}
+```
+
+🔧 **CLI — Create a policy with conditions:**
+```bash
+aws iam create-policy --policy-name RestrictedS3Access --policy-document '{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "AllowS3FromOffice",
+    "Effect": "Allow",
+    "Action": ["s3:ListBucket", "s3:GetObject"],
+    "Resource": ["arn:aws:s3:::my-bucket", "arn:aws:s3:::my-bucket/*"],
+    "Condition": {
+      "IpAddress": {"aws:SourceIp": "203.0.113.0/24"}
+    }
+  }]
+}'
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html
 </b></details>
 
 <details>
@@ -343,26 +714,140 @@ There can be several reasons for that. One of them is lack of policy. To solve t
 ```
 </summary><br><b>
 
-This policy permits to perform any action on any resource. It happens to be the "AdministratorAccess" policy.
+This is the **AdministratorAccess** policy — grants full access to all AWS services and resources.
+
+Breakdown:
+* `"Version": "2012-10-17"` — The IAM policy language version (not a date you can change; 2008-10-17 is the older alternative)
+* `"Effect": "Allow"` — This is a permissive statement (vs `"Deny"`)
+* `"Action": "*"` — ALL actions on ALL services
+* `"Resource": "*"` — ALL resources across the AWS account
+
+⚠️ **Important: **`*` does NOT include IAM actions by default. Writing/deleting IAM entities (users, roles, policies) requires explicit IAM permissions. This policy grants `*` so it DOES include IAM actions — making it one of the most powerful policies.
+
+💡 **Best practice:** Avoid using this policy. Use it only for emergency break-glass roles with strict monitoring. For daily use, grant only the specific services and actions needed.
+
+🔧 **CLI:**
+```bash
+# Find all entities (users, groups, roles) with this policy attached
+aws iam list-entities-for-policy \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+
+# Attach this policy to a user (USE WITH CAUTION)
+aws iam attach-user-policy \
+  --user-name EmergencyAdmin \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_understand-policy-summaries.html
 </b></details>
 
 <details>
 <summary>What security tools AWS IAM provides?</summary><br><b>
 
-* IAM Credentials Report: lists all the account users and the status of their credentials
-* IAM Access Advisor: Shows service permissions granted to a user and information on when he accessed these services the last time
+AWS IAM offers several security tools for auditing and compliance:
+
+| Tool | Purpose | Scope |
+|------|---------|-------|
+| **IAM Credential Report** | CSV download showing all users + credential status (password age, access key age, MFA status) | Account-level |
+| **IAM Access Advisor** | Shows which AWS services a user/role has accessed and when (last accessed info) | Per user/role |
+| **IAM Access Analyzer** | Identifies resources shared with external entities (S3 buckets, IAM roles, KMS keys, etc.) and flags unintended public/cross-account access | Account/org-level |
+| **IAM Policy Simulator** | Tests and validates IAM policies — "will this policy allow Alice to do X?" | Interactive tool |
+
+💡 **Use Access Advisor to implement least privilege:** find unused permissions → remove them from the policy.
+
+🔧 **CLI:**
+```bash
+# Generate and download the credential report
+aws iam generate-credential-report
+aws iam get-credential-report --query 'Content' --output text | base64 -d > credential-report.csv
+
+# Check last accessed info for a user (service-level)
+aws iam generate-service-last-accessed-details --arn arn:aws:iam::123456789012:user/Alice
+aws iam get-service-last-accessed-details --job-id <job-id>
+
+# List Access Analyzer findings
+aws accessanalyzer list-findings --analyzer-arn <arn>
+```
+
+📖 **Docs:**
+* Credential Report: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_getting-report.html
+* Access Analyzer: https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html
 </b></details>
 
 <details>
 <summary>Which tool would you use to optimize user permissions by identifying which services he doesn't regularly (or at all) access?</summary><br><b>
 
-IAM Access Advisor
+**IAM Access Advisor** — it shows the "last accessed" information for each AWS service that a user, group, or role has permissions to access. 
+
+By identifying services the user hasn't accessed in, say, 180 days, you can safely remove those permissions — this is how you implement **least privilege over time**.
+
+💡 The workflow: generate service last accessed details → review unused services → remove corresponding policy actions.
+
+🔧 **CLI:**
+```bash
+# Generate a report for a specific user
+aws iam generate-service-last-accessed-details \
+  --arn arn:aws:iam::123456789012:user/Alice
+
+# Retrieve the report (use the JobId from the previous command)
+aws iam get-service-last-accessed-details --job-id <job-id> \
+  --query 'ServicesLastAccessed[?TotalAuthenticatedEntities==`0`].ServiceName'
+
+# Find all users and their last activity
+for user in $(aws iam list-users --query 'Users[*].UserName' --output text); do
+  echo "=== $user ==="
+  aws iam get-user --user-name "$user" --query 'User.PasswordLastUsed' --output text
+done
+```
+
+📖 **Docs:** https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_access-advisor.html
 </b></details>
 
 <details>
 <summary>What type of IAM object would you use to allow inter-service communication?</summary><br><b>
 
-Role
+**IAM Role** — Roles provide temporary credentials (via STS) that services use to call other AWS APIs. This is the standard pattern for inter-service communication in AWS.
+
+Common patterns:
+* EC2 → S3/DynamoDB/SQS
+* Lambda → CloudWatch Logs + RDS
+* ECS Task → Secrets Manager + S3
+* CodeBuild → ECR + S3
+
+💡 **Why not use IAM Users for services?** 
+1. Users have long-lived access keys that need to be rotated manually
+2. Keys are often hardcoded, creating a security risk
+3. Roles auto-rotate credentials (STS tokens last max 36 hours)
+4. Roles use instance metadata (EC2) or environment variables (Lambda) — no keys to store
+
+🔧 **CLI — Demonstrate EC2 role usage:**
+```bash
+# Create a role for EC2 with S3 access
+aws iam create-role \
+  --role-name EC2S3Access \
+  --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
+
+aws iam attach-role-policy \
+  --role-name EC2S3Access \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+# Create instance profile (needed for EC2 to use the role)
+aws iam create-instance-profile --instance-profile-name EC2S3Profile
+aws iam add-role-to-instance-profile \
+  --instance-profile-name EC2S3Profile \
+  --role-name EC2S3Access
+
+# Launch EC2 with this instance profile
+aws ec2 run-instances \
+  --image-id ami-0c55b159cbfafe1f0 \
+  --instance-type t3.micro \
+  --iam-instance-profile Name=EC2S3Profile \
+  --count 1
+```
+
+📖 **Docs:** 
+* IAM Roles: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+* IAM Roles for EC2: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html
 </b></details>
 ### EC2
 
