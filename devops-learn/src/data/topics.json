@@ -6330,11 +6330,16 @@
           "id": "production",
           "title": "Production",
           "questionCount": 10
+        },
+        {
+          "id": "modern-terraform",
+          "title": "Modern Terraform",
+          "questionCount": 4
         }
       ],
-      "questionCount": 175,
+      "questionCount": 179,
       "exerciseCount": 4,
-      "totalItems": 179,
+      "totalItems": 183,
       "questions": [
         {
           "question": "What is Terraform?",
@@ -6628,7 +6633,7 @@
         },
         {
           "question": "What are \"Provisioners\"? What they are used for?",
-          "answer": "Provisioners can be described as plugin to use with Terraform, usually focusing on the aspect of service configuration and make it operational.\r\n\r\nFew example of provisioners:\r\n\r\n- Run configuration management on a provisioned instance using technology like Ansible, Chef or Puppet.\r\n- Copying files\r\n- Executing remote scripts",
+          "answer": "Provisioners execute scripts or configuration management on a resource after it's created or before it's destroyed. They bridge the gap between infrastructure provisioning and application/OS configuration.\r\n\r\n**Types:**\r\n| Provisioner | Runs where | Use |\r\n|-------------|-----------|-----|\r\n| `local-exec` | Terraform host | Run local scripts, trigger CI/CD, call APIs |\r\n| `remote-exec` | Remote resource | Install packages, configure services via SSH/WinRM |\r\n| `file` | Copies to remote | Upload scripts, config files, certificates |\r\n\r\n**Examples:**\r\n```hcl\r\nresource \"aws_instance\" \"web\" {\r\n  ami           = \"ami-0c55b159cbfafe1f0\"\r\n  instance_type = \"t3.micro\"\r\n\r\n  # Run on the remote instance after creation\r\n  provisioner \"remote-exec\" {\r\n    inline = [\r\n      \"sudo apt update\",\r\n      \"sudo apt install -y nginx\",\r\n      \"sudo systemctl start nginx\"\r\n    ]\r\n    connection {\r\n      type     = \"ssh\"\r\n      host     = self.public_ip\r\n      user     = \"ubuntu\"\r\n      private_key = file(\"~/.ssh/id_rsa\")\r\n    }\r\n  }\r\n\r\n  # Run locally after creation\r\n  provisioner \"local-exec\" {\r\n    command = \"ansible-playbook -i '${self.public_ip},' site.yml\"\r\n  }\r\n}\r\n```\r\n\r\n**Why provisioners are discouraged (use as last resort):**\r\n- Not idempotent — Terraform can't track what the provisioner did\r\n- No state management — if provisioner fails after resource creation, you get a tainted resource\r\n- Breaks declarative model — you're describing steps, not desired state\r\n- Better alternatives: cloud-init/user_data, pre-built images (Packer), configuration management run via user_data",
           "section": "provisioners"
         },
         {
@@ -7088,7 +7093,7 @@
         },
         {
           "question": "Explain Terraform's import functionality",
-          "answer": "`terraform import` is a CLI command used for importing an existing infrastructure into Terraform's state.\r\n\r\nIt's does NOT create the definitions/configuration for creating such infrastructure.",
+          "answer": "`terraform import` brings existing infrastructure under Terraform management by adding it to the state file. It does NOT generate the `.tf` configuration — you must write that yourself.\r\n\r\n**How it works:**\r\n```bash\r\nterraform import aws_instance.my_vm i-0abc123def456\r\n#                              ^resource  ^real-world ID\r\n```\r\n\r\n**Workflow:**\r\n1. Write the resource block in your `.tf` file\r\n2. Run `terraform import  `\r\n3. Terraform reads the real resource and adds it to state\r\n4. Now `terraform plan` shows any drift between your config and reality\r\n\r\n**Two use cases:**\r\n1. **Brownfield adoption** — Existing resources (pre-Terraform) you want to manage going forward\r\n2. **State recovery** — Lost/corrupted state file, rebuild from existing resources\r\n\r\n**Terraform 1.5+ — `import` block (preferred):**\r\n```hcl\r\nimport {\r\n  to = aws_instance.my_vm\r\n  id = \"i-0abc123def456\"\r\n}\r\n```\r\nThis way the import is version-controlled and repeatable — no CLI flag to forget.\r\n\r\n**Limitations:** Only adds to state, never generates config. For config generation, use tools like `terraformer` (reverse Terraform).",
           "section": "import"
         },
         {
@@ -7133,12 +7138,12 @@
         },
         {
           "question": "What's the issue with the following provider configuration?\r \r ```\r provider \"aws\" {\r   region = \"us-west-1\"\r \r   access_key = \"blipblopblap\"\r   secret_key = \"bipbopbipbop\"\r }\r ```",
-          "answer": "It's not secure! you should never store credentials in plain text this way.",
+          "answer": "Hardcoding credentials in plain text is a serious security risk:\r\n- They're committed to Git history (anyone with repo access sees them)\r\n- Leaked if the repo becomes public (intentionally or accidentally)\r\n- Visible in CI/CD logs, plan outputs, and state files\r\n- Rotating credentials requires code changes\r\n\r\n**Best practice:** Never put credentials in `.tf` files. Use provider-native auth mechanisms instead.",
           "section": "secrets"
         },
         {
           "question": "What can you do to NOT store provider credentials in Terraform configuration files in plain text?",
-          "answer": "1. Use environment variables\r\n2. Use password CLIs (like 1Password which is generic but there also specific provider options like aws-vault)",
+          "answer": "**Authentication methods (in order of preference):**\r\n\r\n| Method | How |\r\n|--------|-----|\r\n| **Environment variables** | `export AWS_ACCESS_KEY_ID=...` / `TF_VAR_*` |\r\n| **IAM roles / OIDC** | Instance profile (EC2), Workload Identity (GCP/GitHub Actions), no static creds |\r\n| **Credential files** | `~/.aws/credentials`, `~/.config/gcloud/` |\r\n| **Vault / secrets manager** | `vault` provider, `aws_secretsmanager` data source |\r\n| **CLI tools** | aws-vault, 1Password CLI |\r\n\r\n**Example — GitHub Actions OIDC (no static credentials at all):**\r\n```yaml\r\n- uses: aws-actions/configure-aws-credentials@v4\r\n  with:\r\n    role-to-assume: arn:aws:iam::123456789012:role/github-actions\r\n    aws-region: us-west-1\r\n```\r\n\r\n**For sensitive variables in Terraform itself:**\r\n```hcl\r\nvariable \"db_password\" {\r\n  type      = string\r\n  sensitive = true   # Won't appear in plan/apply output\r\n}\r\n```\r\nUse `TF_VAR_db_password` env var or a `.tfvars` file in `.gitignore`.",
           "section": "secrets"
         },
         {
@@ -7210,6 +7215,26 @@
           "question": "You try to deploy a cluster and an app on that cluster, but the app resource was created before the cluster. How to manage such situation?",
           "answer": "Use the meta-argument `depends_on` in the app resource definition. This way the app will depend on the cluster resource and order will be maintained in creation of the resources.",
           "section": "production"
+        },
+        {
+          "question": "What is OpenTofu? How does it relate to Terraform?",
+          "answer": "OpenTofu is an open-source fork of Terraform created by the Linux Foundation after HashiCorp changed Terraform's license from MPL 2.0 to BSL (Business Source License) in August 2023.\r\n\r\n**Why OpenTofu exists:**\r\n- Terraform's BSL license restricts competitive use (e.g., building a Terraform competitor)\r\n- Community concern that the BSL could be used against companies offering Terraform-based products\r\n- OpenTofu is MPL 2.0 — truly open source, no commercial restrictions\r\n\r\n**Key differences:**\r\n| | Terraform | OpenTofu |\r\n|---|---|---|\r\n| **License** | BSL 1.1 | MPL 2.0 (CNCF) |\r\n| **Backed by** | HashiCorp (IBM) | Linux Foundation |\r\n| **Registry** | registry.terraform.io | OpenTofu Registry (compatible) |\r\n| **State encryption** | Not built-in | End-to-end state encryption |\r\n| **Provider compatibility** | — | Drop-in compatible with Terraform providers |\r\n| **Stable since** | 2014 | v1.6.0 (Jan 2024) |\r\n\r\n**Migration from Terraform:**\r\n```bash\r\n# Drop-in replacement — same syntax, same providers\r\ntofu init\r\ntofu plan\r\ntofu apply\r\n```\r\n\r\n**Which to choose:**\r\n- Most enterprises stayed with Terraform in the short term (maturity, support contracts)\r\n- OpenTofu is gaining adoption in OSS-first organizations and those with legal concerns about BSL\r\n- The APIs and HCL are intentionally compatible — switching is minimal effort",
+          "section": "modern-terraform"
+        },
+        {
+          "question": "What is Terragrunt? When would you use it?",
+          "answer": "Terragrunt is a thin wrapper around Terraform/OpenTofu that helps manage multi-environment, multi-module infrastructure at scale. It solves problems Terraform doesn't address natively.\r\n\r\n**What Terragrunt solves:**\r\n\r\n1. **DRY configurations** — Keep backend, provider, and remote state config in one place:\r\n```hcl\r\n# terragrunt.hcl (root)\r\nremote_state {\r\n  backend = \"s3\"\r\n  config = {\r\n    bucket         = \"my-terraform-state\"\r\n    key            = \"${path_relative_to_include()}/terraform.tfstate\"\r\n    region         = \"us-east-1\"\r\n    dynamodb_table = \"terraform-locks\"\r\n  }\r\n}\r\n```\r\n\r\n2. **Dependencies between modules:**\r\n```hcl\r\ndependency \"vpc\" {\r\n  config_path = \"../vpc\"\r\n}\r\ninputs = {\r\n  vpc_id = dependency.vpc.outputs.vpc_id\r\n}\r\n```\r\n\r\n3. **Run-all commands:**\r\n```bash\r\nterragrunt run-all plan     # Plan all modules in dependency order\r\nterragrunt run-all apply    # Apply all modules\r\n```\r\n\r\n4. **Code generation** — Auto-generate provider/provider blocks.\r\n\r\n**When to use:**\r\n- Large infrastructure with 20+ Terraform state files\r\n- Multi-account/multi-region architectures\r\n- Need to orchestrate dependencies between separate Terraform modules\r\n- Want to keep backend configuration DRY\r\n\r\n**When NOT to:**\r\n- Small projects (adds unnecessary complexity)\r\n- A single Terraform workspace/state file handles everything",
+          "section": "modern-terraform"
+        },
+        {
+          "question": "How do you detect and manage configuration drift in Terraform?",
+          "answer": "Configuration drift occurs when the real-world infrastructure deviates from what's defined in Terraform code — someone manually changed a security group rule, upgraded a database instance, or deleted a resource.\r\n\r\n**Detecting drift:**\r\n```bash\r\n# Plan compares desired state (code) vs actual state (real world)\r\nterraform plan\r\n\r\n# Refresh state only (don't plan changes)\r\nterraform refresh\r\n\r\n# Check specific resource\r\nterraform plan -target=aws_security_group.main\r\n\r\n# In CI/CD — scheduled drift detection\r\n# .github/workflows/drift-check.yml\r\nterraform plan -detailed-exitcode\r\n# Exit codes: 0=no changes, 1=error, 2=changes detected\r\n```\r\n\r\n**Managing drift:**\r\n\r\n1. **Auto-remediate** — If `terraform plan` detects drift in CI, auto-apply to fix it\r\n2. **Alert and review** — Notify the team, review what changed, decide whether to re-apply or update code\r\n3. **Prevention** — Use IAM to restrict manual console access, enforce Terraform-only changes via policy\r\n\r\n**Tools:**\r\n- **Terraform Cloud/Enterprise** — built-in drift detection with health checks\r\n- **Driftctl** — open-source tool that scans cloud resources and compares against Terraform state\r\n- **Policy as code** — Sentinel/OPA policies that prevent manual modifications\r\n\r\n**Best practice:** Run `terraform plan` on a schedule (hourly/daily) in CI and alert on drift. The longer drift goes undetected, the harder it is to reconcile.",
+          "section": "modern-terraform"
+        },
+        {
+          "question": "How do you test Terraform code?",
+          "answer": "A layered testing strategy for infrastructure code:\r\n\r\n**1. Static Analysis:**\r\n```bash\r\nterraform fmt -check -recursive   # Format check\r\nterraform validate                # Syntax and structure validation\r\ntflint                            # Linting — catches provider-specific errors, deprecated syntax\r\ncheckov --directory .             # Security scanning (misconfigurations, CVEs)\r\n```\r\n\r\n**2. Unit/Contract Tests with Terratest (Go):**\r\n```go\r\nfunc TestTerraformAwsS3(t *testing.T) {\r\n    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{\r\n        TerraformDir: \"../examples/s3\",\r\n    })\r\n    defer terraform.Destroy(t, terraformOptions)\r\n    terraform.InitAndApply(t, terraformOptions)\r\n\r\n    bucketID := terraform.Output(t, terraformOptions, \"bucket_id\")\r\n    assert.Equal(t, \"my-bucket\", bucketID)\r\n}\r\n```\r\n\r\n**3. Policy Testing:**\r\n```hcl\r\n# Sentinel/OPA policy — enforce tagging\r\npolicy \"require-tags\" {\r\n  enforcement_level = \"hard-mandatory\"\r\n}\r\n```\r\n\r\n**4. Integration Testing:**\r\n- Deploy real infrastructure in a sandbox account\r\n- Run validation scripts against the deployed resources (e.g., `inspec`, `testinfra`)\r\n- Verify endpoints, connectivity, security posture\r\n- Destroy immediately after testing\r\n\r\n**CI/CD pipeline:**\r\n```yaml\r\n- terraform fmt -check\r\n- terraform validate\r\n- tflint\r\n- checkov --directory .\r\n- cd tests && go test -v -timeout 30m\r\n```\r\n\r\n**Key principle:** Infrastructure code should be tested just like application code — static checks → unit tests → integration tests → policy enforcement.",
+          "section": "modern-terraform"
         }
       ],
       "exercises": [

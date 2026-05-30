@@ -729,14 +729,48 @@ Why to use it in the first place: you might have resources that have dependency 
 <details>
 <summary>What are "Provisioners"? What they are used for?</summary><br><b>
 
-Provisioners can be described as plugin to use with Terraform, usually focusing on the aspect of service configuration and make it operational.
+Provisioners execute scripts or configuration management on a resource after it's created or before it's destroyed. They bridge the gap between infrastructure provisioning and application/OS configuration.
 
-Few example of provisioners:
+**Types:**
+| Provisioner | Runs where | Use |
+|-------------|-----------|-----|
+| `local-exec` | Terraform host | Run local scripts, trigger CI/CD, call APIs |
+| `remote-exec` | Remote resource | Install packages, configure services via SSH/WinRM |
+| `file` | Copies to remote | Upload scripts, config files, certificates |
 
-- Run configuration management on a provisioned instance using technology like Ansible, Chef or Puppet.
-- Copying files
-- Executing remote scripts
+**Examples:**
+```hcl
+resource "aws_instance" "web" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t3.micro"
 
+  # Run on the remote instance after creation
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt update",
+      "sudo apt install -y nginx",
+      "sudo systemctl start nginx"
+    ]
+    connection {
+      type     = "ssh"
+      host     = self.public_ip
+      user     = "ubuntu"
+      private_key = file("~/.ssh/id_rsa")
+    }
+  }
+
+  # Run locally after creation
+  provisioner "local-exec" {
+    command = "ansible-playbook -i '${self.public_ip},' site.yml"
+  }
+}
+```
+
+**Why provisioners are discouraged (use as last resort):**
+- Not idempotent — Terraform can't track what the provisioner did
+- No state management — if provisioner fails after resource creation, you get a tainted resource
+- Breaks declarative model — you're describing steps, not desired state
+- Better alternatives: cloud-init/user_data, pre-built images (Packer), configuration management run via user_data
 </b></details>
 
 <details>
@@ -1726,10 +1760,34 @@ module "subnet" {
 <details>
 <summary>Explain Terraform's import functionality</summary><br><b>
 
-`terraform import` is a CLI command used for importing an existing infrastructure into Terraform's state.
+`terraform import` brings existing infrastructure under Terraform management by adding it to the state file. It does NOT generate the `.tf` configuration — you must write that yourself.
 
-It's does NOT create the definitions/configuration for creating such infrastructure.
+**How it works:**
+```bash
+terraform import aws_instance.my_vm i-0abc123def456
+#                              ^resource  ^real-world ID
+```
 
+**Workflow:**
+1. Write the resource block in your `.tf` file
+2. Run `terraform import <resource_address> <resource_id>`
+3. Terraform reads the real resource and adds it to state
+4. Now `terraform plan` shows any drift between your config and reality
+
+**Two use cases:**
+1. **Brownfield adoption** — Existing resources (pre-Terraform) you want to manage going forward
+2. **State recovery** — Lost/corrupted state file, rebuild from existing resources
+
+**Terraform 1.5+ — `import` block (preferred):**
+```hcl
+import {
+  to = aws_instance.my_vm
+  id = "i-0abc123def456"
+}
+```
+This way the import is version-controlled and repeatable — no CLI flag to forget.
+
+**Limitations:** Only adds to state, never generates config. For config generation, use tools like `terraformer` (reverse Terraform).
 </b></details>
 
 <details>
@@ -1904,16 +1962,44 @@ provider "aws" {
 
 </summary><br><b>
 
-It's not secure! you should never store credentials in plain text this way.
+Hardcoding credentials in plain text is a serious security risk:
+- They're committed to Git history (anyone with repo access sees them)
+- Leaked if the repo becomes public (intentionally or accidentally)
+- Visible in CI/CD logs, plan outputs, and state files
+- Rotating credentials requires code changes
 
+**Best practice:** Never put credentials in `.tf` files. Use provider-native auth mechanisms instead.
 </b></details>
 
 <details>
 <summary>What can you do to NOT store provider credentials in Terraform configuration files in plain text?</summary><br><b>
 
-1. Use environment variables
-2. Use password CLIs (like 1Password which is generic but there also specific provider options like aws-vault)
+**Authentication methods (in order of preference):**
 
+| Method | How |
+|--------|-----|
+| **Environment variables** | `export AWS_ACCESS_KEY_ID=...` / `TF_VAR_*` |
+| **IAM roles / OIDC** | Instance profile (EC2), Workload Identity (GCP/GitHub Actions), no static creds |
+| **Credential files** | `~/.aws/credentials`, `~/.config/gcloud/` |
+| **Vault / secrets manager** | `vault` provider, `aws_secretsmanager` data source |
+| **CLI tools** | aws-vault, 1Password CLI |
+
+**Example — GitHub Actions OIDC (no static credentials at all):**
+```yaml
+- uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: arn:aws:iam::123456789012:role/github-actions
+    aws-region: us-west-1
+```
+
+**For sensitive variables in Terraform itself:**
+```hcl
+variable "db_password" {
+  type      = string
+  sensitive = true   # Won't appear in plan/apply output
+}
+```
+Use `TF_VAR_db_password` env var or a `.tfvars` file in `.gitignore`.
 </b></details>
 
 <details>
@@ -2078,3 +2164,180 @@ If it's a matter of changing a resource name, you could make use of `terraform s
 Use the meta-argument `depends_on` in the app resource definition. This way the app will depend on the cluster resource and order will be maintained in creation of the resources.
 
 </b></details>
+
+### Modern Terraform
+
+<details>
+<summary>What is OpenTofu? How does it relate to Terraform?</summary><br><b>
+
+OpenTofu is an open-source fork of Terraform created by the Linux Foundation after HashiCorp changed Terraform's license from MPL 2.0 to BSL (Business Source License) in August 2023.
+
+**Why OpenTofu exists:**
+- Terraform's BSL license restricts competitive use (e.g., building a Terraform competitor)
+- Community concern that the BSL could be used against companies offering Terraform-based products
+- OpenTofu is MPL 2.0 — truly open source, no commercial restrictions
+
+**Key differences:**
+| | Terraform | OpenTofu |
+|---|---|---|
+| **License** | BSL 1.1 | MPL 2.0 (CNCF) |
+| **Backed by** | HashiCorp (IBM) | Linux Foundation |
+| **Registry** | registry.terraform.io | OpenTofu Registry (compatible) |
+| **State encryption** | Not built-in | End-to-end state encryption |
+| **Provider compatibility** | — | Drop-in compatible with Terraform providers |
+| **Stable since** | 2014 | v1.6.0 (Jan 2024) |
+
+**Migration from Terraform:**
+```bash
+# Drop-in replacement — same syntax, same providers
+tofu init
+tofu plan
+tofu apply
+```
+
+**Which to choose:**
+- Most enterprises stayed with Terraform in the short term (maturity, support contracts)
+- OpenTofu is gaining adoption in OSS-first organizations and those with legal concerns about BSL
+- The APIs and HCL are intentionally compatible — switching is minimal effort
+</b></details>
+
+<details>
+<summary>What is Terragrunt? When would you use it?</summary><br><b>
+
+Terragrunt is a thin wrapper around Terraform/OpenTofu that helps manage multi-environment, multi-module infrastructure at scale. It solves problems Terraform doesn't address natively.
+
+**What Terragrunt solves:**
+
+1. **DRY configurations** — Keep backend, provider, and remote state config in one place:
+```hcl
+# terragrunt.hcl (root)
+remote_state {
+  backend = "s3"
+  config = {
+    bucket         = "my-terraform-state"
+    key            = "${path_relative_to_include()}/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+  }
+}
+```
+
+2. **Dependencies between modules:**
+```hcl
+dependency "vpc" {
+  config_path = "../vpc"
+}
+inputs = {
+  vpc_id = dependency.vpc.outputs.vpc_id
+}
+```
+
+3. **Run-all commands:**
+```bash
+terragrunt run-all plan     # Plan all modules in dependency order
+terragrunt run-all apply    # Apply all modules
+```
+
+4. **Code generation** — Auto-generate provider/provider blocks.
+
+**When to use:**
+- Large infrastructure with 20+ Terraform state files
+- Multi-account/multi-region architectures
+- Need to orchestrate dependencies between separate Terraform modules
+- Want to keep backend configuration DRY
+
+**When NOT to:**
+- Small projects (adds unnecessary complexity)
+- A single Terraform workspace/state file handles everything
+</b></details>
+
+<details>
+<summary>How do you detect and manage configuration drift in Terraform?</summary><br><b>
+
+Configuration drift occurs when the real-world infrastructure deviates from what's defined in Terraform code — someone manually changed a security group rule, upgraded a database instance, or deleted a resource.
+
+**Detecting drift:**
+```bash
+# Plan compares desired state (code) vs actual state (real world)
+terraform plan
+
+# Refresh state only (don't plan changes)
+terraform refresh
+
+# Check specific resource
+terraform plan -target=aws_security_group.main
+
+# In CI/CD — scheduled drift detection
+# .github/workflows/drift-check.yml
+terraform plan -detailed-exitcode
+# Exit codes: 0=no changes, 1=error, 2=changes detected
+```
+
+**Managing drift:**
+
+1. **Auto-remediate** — If `terraform plan` detects drift in CI, auto-apply to fix it
+2. **Alert and review** — Notify the team, review what changed, decide whether to re-apply or update code
+3. **Prevention** — Use IAM to restrict manual console access, enforce Terraform-only changes via policy
+
+**Tools:**
+- **Terraform Cloud/Enterprise** — built-in drift detection with health checks
+- **Driftctl** — open-source tool that scans cloud resources and compares against Terraform state
+- **Policy as code** — Sentinel/OPA policies that prevent manual modifications
+
+**Best practice:** Run `terraform plan` on a schedule (hourly/daily) in CI and alert on drift. The longer drift goes undetected, the harder it is to reconcile.
+</b></details>
+
+<details>
+<summary>How do you test Terraform code?</summary><br><b>
+
+A layered testing strategy for infrastructure code:
+
+**1. Static Analysis:**
+```bash
+terraform fmt -check -recursive   # Format check
+terraform validate                # Syntax and structure validation
+tflint                            # Linting — catches provider-specific errors, deprecated syntax
+checkov --directory .             # Security scanning (misconfigurations, CVEs)
+```
+
+**2. Unit/Contract Tests with Terratest (Go):**
+```go
+func TestTerraformAwsS3(t *testing.T) {
+    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+        TerraformDir: "../examples/s3",
+    })
+    defer terraform.Destroy(t, terraformOptions)
+    terraform.InitAndApply(t, terraformOptions)
+
+    bucketID := terraform.Output(t, terraformOptions, "bucket_id")
+    assert.Equal(t, "my-bucket", bucketID)
+}
+```
+
+**3. Policy Testing:**
+```hcl
+# Sentinel/OPA policy — enforce tagging
+policy "require-tags" {
+  enforcement_level = "hard-mandatory"
+}
+```
+
+**4. Integration Testing:**
+- Deploy real infrastructure in a sandbox account
+- Run validation scripts against the deployed resources (e.g., `inspec`, `testinfra`)
+- Verify endpoints, connectivity, security posture
+- Destroy immediately after testing
+
+**CI/CD pipeline:**
+```yaml
+- terraform fmt -check
+- terraform validate
+- tflint
+- checkov --directory .
+- cd tests && go test -v -timeout 30m
+```
+
+**Key principle:** Infrastructure code should be tested just like application code — static checks → unit tests → integration tests → policy enforcement.
+</b></details>
+
+
