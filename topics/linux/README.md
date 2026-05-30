@@ -908,8 +908,35 @@ Another way to ask this: what happens from the moment you turned on the server u
 <details>
 <summary>What's an inode?</summary><br><b>
 
-For each file (and directory) in Linux there is an inode, a data structure which stores meta data
-related to the file like its size, owner, permissions, etc.
+An inode (index node) is a data structure on a filesystem that stores metadata about a file or directory. Every file/directory has exactly one inode.
+
+An inode contains:
+* **File type** — regular file, directory, symlink, etc.
+* **Permissions** — read/write/execute bits
+* **Owner/Group** — UID and GID
+* **Timestamps** — access (atime), modification (mtime), change (ctime)
+* **Size** — in bytes
+* **Link count** — number of hard links pointing to this inode
+* **Pointers to data blocks** — where the actual file content is stored on disk
+
+What an inode does NOT contain: the **file name**. File names are stored in directory entries that map names to inode numbers.
+
+🔧 **CLI:**
+```bash
+# Check inode usage on a filesystem
+df -i
+
+# Show inode number for each file
+ls -li
+
+# Find files with a specific inode number
+find . -inum 12345
+
+# Check detailed inode info (via debugfs, requires root)
+sudo debugfs -R "stat <12345>" /dev/sda1
+```
+
+📖 **Docs:** `man 7 inode` / https://www.kernel.org/doc/html/latest/filesystems/ext4/overview.html
 </b></details>
 
 <details>
@@ -926,7 +953,24 @@ File name (it's part of the directory file)
 <details>
 <summary>How to check which disks are currently mounted?</summary><br><b>
 
-Run `mount`
+```bash
+# Show all mounted filesystems (human-readable sizes)
+mount
+
+# Alternative: show mounts from /proc/mounts (kernel's view)
+cat /proc/mounts
+
+# Show only specific filesystem types
+mount -t ext4
+
+# Human-friendly tree view (if installed)
+findmnt
+
+# Show disk usage per mounted filesystem
+df -h
+```
+
+📖 **Docs:** `man mount` / `man findmnt`
 </b></details>
 
 <details>
@@ -938,40 +982,128 @@ Run `mount`
 <details>
 <summary>What is the difference between a soft link and hard link?</summary><br><b>
 
-Hard link is the same file, using the same inode.
-Soft link is a shortcut to another file, using a different inode.
+| | Hard Link | Soft Link (Symlink) |
+|---|---|---|
+| **Inode** | Same inode as the original | Different inode |
+| **Points to** | Data blocks directly | Path to the target file |
+| **Cross-filesystem** | No | Yes |
+| **If original deleted** | Data still accessible | Link breaks (becomes dangling) |
+| **For directories** | Not allowed (generally) | Allowed |
+| **Created with** | `ln target link` | `ln -s target link` |
+
+Hard link: a second directory entry pointing to the SAME inode. Deleting one doesn't affect the other.
+Soft link: a special file containing a path to the target. Like a shortcut.
+
+🔧 **CLI:**
+```bash
+# Create a hard link
+ln /path/to/original.txt /path/to/hardlink.txt
+
+# Create a symlink
+ln -s /path/to/original.txt /path/to/symlink.txt
+
+# Check inode numbers (hard links share the same inode)
+ls -li /path/to/original.txt /path/to/hardlink.txt
+
+# Find all hard links of a file (same inode)
+find / -inum $(ls -i original.txt | awk '{print $1}') 2>/dev/null
+```
+
+📖 **Docs:** `man ln` / https://www.kernel.org/doc/html/latest/filesystems/
 </b></details>
 
 <details>
 <summary>True or False? You can create an hard link for a directory</summary><br><b>
 
-False
+False. Hard links to directories are not allowed (except for `.` and `..` which are created by the filesystem itself). This restriction prevents circular references in the filesystem tree. The `ln` command will return an error if you attempt it.
 </b></details>
 
 <details>
 <summary>True or False? You can create a soft link between different filesystems</summary><br><b>
 
-True
+True. Since a soft link only stores a path string (not a reference to an inode), it can point across filesystem boundaries, even to NFS mounts or other remote filesystems.
 </b></details>
 
 <details>
 <summary>True or False? Directories always have by minimum 2 links</summary><br><b>
 
-True.
+True. Every directory starts with at least 2 hard links:
+* `.` — the directory itself (link from its own entry)
+* `..` — the parent directory's reference to it
+
+Each subdirectory inside a directory adds one more link (via the subdirectory's `..` entry). So: `link_count = 2 + number of subdirectories`.
 </b></details>
 
 <details>
 <summary>What happens when you delete the original file in case of soft link and hard link?</summary><br><b>
+
+* **Hard link** — The data remains fully accessible. Deleting the "original" file only removes one directory entry. The inode and its data blocks persist until ALL hard links (directory entries) pointing to that inode are deleted. The link count in the inode tracks this.
+
+* **Soft link (symlink)** — The symlink becomes a **dangling link** (broken). It still exists but points to a nonexistent path. Any attempt to access it will return `No such file or directory`. However, if a new file with the same path is later created, the symlink starts working again.
+
+💡 This is why `rm` stands for "remove" — it removes a directory entry (name→inode mapping), not the data itself.
+
+📖 **Docs:** `man 2 unlink`
 </b></details>
 
 <details>
 <summary>Can you check what type of filesystem is used in /home?</summary><br><b>
 
-There are many answers for this question. One way is running `df -T`
+```bash
+# Show filesystem type for all mounts
+df -T
+
+# Show only for /home
+df -T /home
+
+# Alternative: check /proc/mounts
+grep /home /proc/mounts
+
+# Using blkid for the underlying block device
+blkid $(df /home | tail -1 | awk '{print $1}')
+
+# Full detail from /etc/fstab
+grep /home /etc/fstab
+
+# Using lsblk with filesystem info
+lsblk -f
+```
+
+📖 **Docs:** `man df` / `man blkid` / `man lsblk`
 </b></details>
 
 <details>
 <summary>What is a swap partition? What is it used for?</summary><br><b>
+
+Swap is disk space used as an extension of RAM. When physical memory is exhausted, the kernel moves inactive pages from RAM to swap ("swapping out"), freeing RAM for active processes.
+
+**Use cases:**
+* **Memory overflow** — When RAM is full, swap prevents OOM (Out-Of-Memory) kills
+* **Hibernation** — The system saves RAM contents to swap before powering off
+* **Rarely-used memory** — Inactive memory pages get swapped out, keeping RAM for hot data
+
+⚠️ Swap is NOT a replacement for RAM — it's much slower (even on NVMe). Excessive swapping ("thrashing") will make the system unusable.
+
+🔧 **CLI:**
+```bash
+# Check swap usage
+free -h
+swapon --show
+cat /proc/swaps
+
+# Create and enable a swap file
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Tune swappiness (0-100, lower = less swapping)
+cat /proc/sys/vm/swappiness
+sudo sysctl vm.swappiness=10
+```
+
+📖 **Docs:** `man mkswap` / `man swapon` / https://www.kernel.org/doc/html/latest/admin-guide/sysctl/vm.html
 </b></details>
 
 <details>
@@ -980,24 +1112,95 @@ There are many answers for this question. One way is running `df -T`
   - new empty file
   - a file with text (without using text editor)
   - a file with given size</summary><br><b>
-  
-  * touch new_file.txt
-  * cat > new_file [enter] submit text; ctrl + d to exit insert mode
-  * truncate -s <size> new_file.txt
+
+```bash
+# New empty file
+touch new_file.txt
+
+# File with text (without a text editor)
+echo "some text" > file.txt
+echo "append more text" >> file.txt
+cat > file.txt        # type text, then Ctrl+D to save and exit
+printf "line1\nline2\n" > file.txt
+
+# File with a specific size
+truncate -s 100M file.bin          # 100 MB sparse file
+fallocate -l 1G file.bin           # 1 GB file (instant, real allocation)
+dd if=/dev/zero of=file.bin bs=1M count=512  # 512 MB filled with zeros
+```
+
+💡 `truncate` creates a sparse file (doesn't actually allocate blocks until written to). `fallocate` pre-allocates the space. `dd` writes zeros sequentially.
+
+📖 **Docs:** `man touch` / `man truncate` / `man fallocate`
 </b></details>
 
 <details>
 <summary>You are trying to create a new file but you get "File system is full". You check with df for free space and you see you used only 20% of the space. What could be the problem?</summary><br><b>
+
+The most likely cause: **you've run out of inodes**, not disk space. Each file requires an inode, and if all inodes are consumed, you can't create new files even with free disk space.
+
+🔧 **Diagnose:**
+```bash
+# Check inode usage (look for IUse% column)
+df -i
+
+# Find which directory has too many files
+for dir in /*; do echo "$(find "$dir" -type f 2>/dev/null | wc -l) $dir"; done | sort -rn | head -10
+
+# Count files in one directory
+ls -1 /path/to/dir | wc -l
+
+# Clean up old/unwanted small files
+find /tmp -type f -mtime +7 -delete
+find /var/log -type f -name "*.gz" -delete
+
+# Remove old kernel packages (Debian/Ubuntu)
+sudo apt autoremove --purge
+```
+
+💡 This often happens with applications that create millions of small files (session files, cache files, temp files, mail queues).
+
+📖 **Docs:** `man df` / `man mkfs.ext4` (-N option sets inode count at format time)
 </b></details>
 
 <details>
 <summary>How would you check what is the size of a certain directory?</summary><br><b>
 
-`du -sh`
+```bash
+# Total size of a directory (human-readable)
+du -sh /path/to/dir
+
+# Size of each subdirectory (sorted)
+du -sh /path/to/dir/* | sort -rh
+
+# Show depth-limited view (1 level deep)
+du -h --max-depth=1 /path/to/dir
+
+# Alternative: ncdu (interactive, needs install)
+ncdu /path/to/dir
+
+# Show file sizes within the directory too
+find /path/to/dir -type f -exec ls -lh {} \; | awk '{print $5, $NF}'
+```
+
+💡 `du` shows actual disk usage (blocks allocated). This can differ from `ls -l` which shows the logical file size — sparse files take less disk space than their apparent size.
+
+📖 **Docs:** `man du` / `man ncdu`
 </b></details>
 
 <details>
 <summary>What is LVM?</summary><br><b>
+
+**LVM (Logical Volume Manager)** is a storage abstraction layer that sits between physical disks and the filesystem. It allows flexible disk management — resize, snapshot, and combine disks without reformatting.
+
+Benefits over traditional partitions:
+* **Resize volumes online** — Grow or shrink logical volumes without unmounting
+* **Snapshots** — Point-in-time copies for backups or testing
+* **Span multiple disks** — A volume can span several physical disks
+* **Striping & Mirroring** — Built-in RAID-like functionality
+* **Thin provisioning** — Allocate more space than physically available, grow on demand
+
+📖 **Docs:** `man lvm` / https://sourceware.org/lvm2/
 </b></details>
 
 <details>
@@ -1007,27 +1210,183 @@ There are many answers for this question. One way is running `df -T`
   * VG
   * LV</summary><br><b>
 
+LVM uses three layers of abstraction:
 
+```
+Physical Disks → PV (Physical Volume) → VG (Volume Group) → LV (Logical Volume) → Filesystem
+```
+
+| Layer | Description | CLI Example |
+|-------|-------------|-------------|
+| **PV** (Physical Volume) | A physical disk or partition that LVM manages. Initialized with `pvcreate`. | `pvcreate /dev/sdb` |
+| **VG** (Volume Group) | A pool of PVs combined into one storage resource. This is where you aggregate capacity. | `vgcreate my_vg /dev/sdb /dev/sdc` |
+| **LV** (Logical Volume) | A virtual partition carved out of a VG. This is what you format (ext4, xfs) and mount. | `lvcreate -L 100G -n my_lv my_vg` |
+
+🔧 **CLI workflow:**
+```bash
+# 1. Create PV on each disk
+sudo pvcreate /dev/sdb /dev/sdc
+
+# 2. Create VG from those PVs
+sudo vgcreate data_vg /dev/sdb /dev/sdc
+
+# 3. Create an LV from the VG
+sudo lvcreate -L 200G -n project_lv data_vg
+
+# 4. Format and mount the LV
+sudo mkfs.ext4 /dev/data_vg/project_lv
+sudo mount /dev/data_vg/project_lv /mnt/data
+
+# Check status
+pvdisplay / vgdisplay / lvdisplay
+```
+
+📖 **Docs:** `man lvm` / https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/ (LVM Administrator Guide)
 </b></details>
 
 <details>
 <summary>What is NFS? What is it used for?</summary><br><b>
+
+**NFS (Network File System)** is a distributed filesystem protocol that allows a server to share directories over a network, which clients mount as if they were local disks.
+
+Use cases:
+* Centralized home directories across multiple servers
+* Shared storage for applications (web servers serving the same content)
+* Data exchange between systems without copying files
+
+🔧 **CLI:**
+```bash
+# Server: install and export a directory
+sudo apt install nfs-kernel-server
+echo "/srv/shared 192.168.1.0/24(rw,sync,no_subtree_check)" | sudo tee -a /etc/exports
+sudo exportfs -a
+
+# Client: mount the NFS share
+sudo mount -t nfs 192.168.1.100:/srv/shared /mnt/nfs
+
+# Check active NFS mounts
+showmount -e 192.168.1.100
+nfsstat
+```
+
+📖 **Docs:** `man nfs` / https://www.kernel.org/doc/html/latest/filesystems/nfs/
 </b></details>
 
 <details>
 <summary>What RAID is used for? Can you explain the differences between RAID 0, 1, 5 and 10?</summary><br><b>
+
+**RAID (Redundant Array of Independent Disks)** combines multiple disks for performance and/or redundancy.
+
+| Level | Min Disks | Capacity | Fault Tolerance | Description |
+|-------|-----------|----------|-----------------|-------------|
+| **RAID 0** | 2 | 100% | None | Striping — data split across disks. Fast but no protection. |
+| **RAID 1** | 2 | 50% | 1 disk | Mirroring — identical copy on both disks. Simple and reliable. |
+| **RAID 5** | 3 | N-1 disks | 1 disk | Striping + distributed parity. Good balance of capacity and protection. |
+| **RAID 10** | 4 | 50% | 1+ per pair | Mirrored pairs, then striped. Best performance + redundancy. |
+
+💡 **When to choose:**
+* RAID 0: Scratch/temp data where speed matters, loss is acceptable
+* RAID 1: Simple mirror, boot drives, small setups
+* RAID 5: Read-heavy workloads, cost-effective redundancy
+* RAID 10: Database servers, write-heavy workloads — best performance
+
+🔧 **CLI — software RAID with mdadm:**
+```bash
+# Create RAID 1 with two disks
+sudo mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdb /dev/sdc
+cat /proc/mdstat                   # Check RAID status
+sudo mkfs.ext4 /dev/md0            # Format the array
+
+# Check RAID details
+sudo mdadm --detail /dev/md0
+```
+
+📖 **Docs:** `man mdadm` / https://raid.wiki.kernel.org/
 </b></details>
 
 <details>
 <summary>Describe the process of extending a filesystem disk space</summary><br><b>
+
+The process depends on the setup:
+
+**With LVM (recommended):**
+```bash
+# 1. Add a new disk and create a PV
+sudo pvcreate /dev/sdc
+
+# 2. Extend the VG with the new PV
+sudo vgextend my_vg /dev/sdc
+
+# 3. Extend the LV (e.g., add 50G)
+sudo lvextend -L +50G /dev/my_vg/my_lv
+
+# 4. Extend the filesystem (online resize)
+# For ext4:
+sudo resize2fs /dev/my_vg/my_lv
+# For XFS:
+sudo xfs_growfs /mnt/mountpoint
+```
+
+**Without LVM (direct partition):**
+```bash
+# 1. Unmount (if possible) and resize partition with fdisk/gparted
+# 2. Then resize the filesystem
+sudo resize2fs /dev/sdb1
+```
+
+⚠️ Always backup before resizing. XFS can only be grown, not shrunk.
+
+📖 **Docs:** `man lvextend` / `man resize2fs` / `man xfs_growfs`
 </b></details>
 
 <details>
 <summary>What is lazy umount?</summary><br><b>
+
+`umount -l` (lazy unmount) detaches a filesystem from the mount tree immediately, but keeps it "invisible" until all open file handles are closed. The kernel cleans it up in the background once nothing is using it.
+
+Useful when:
+* A process has a file open on the mount and you don't want to kill it
+* You need to unmount a busy network filesystem quickly
+* Regular `umount` returns `target is busy`
+
+```bash
+umount -l /mnt/nfs_share
+```
+
+⚠️ **Caution:** The unmount appears to succeed immediately, but data might still be flushing. For production, prefer `umount -f` (force, for NFS) or terminate the blocking process first.
+
+📖 **Docs:** `man 8 umount`
 </b></details>
 
 <details>
 <summary>What is tmpfs?</summary><br><b>
+
+**tmpfs** is a filesystem that stores data in volatile memory (RAM + swap), not on disk. It's a temporary filesystem — all data is lost on reboot.
+
+Common tmpfs mounts:
+* `/tmp` — Temporary files (often tmpfs on modern distros)
+* `/dev/shm` — Shared memory for POSIX IPC
+* `/run` — Runtime variable data for system daemons
+
+**Advantages:**
+* Ultra-fast (RAM speed vs disk)
+* No disk wear (good for write-heavy temp files)
+* Size grows/shrinks dynamically
+
+🔧 **CLI:**
+```bash
+# Check current tmpfs mounts
+mount | grep tmpfs
+df -h -t tmpfs
+
+# Create a custom tmpfs mount
+sudo mount -t tmpfs -o size=512M tmpfs /mnt/ramdisk
+
+# Add to /etc/fstab for persistence across reboots
+echo "tmpfs /mnt/ramdisk tmpfs defaults,size=512M 0 0" | sudo tee -a /etc/fstab
+```
+
+📖 **Docs:** `man mount` (tmpfs section) / https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html
 </b></details>
 
 <details>
@@ -1035,6 +1394,26 @@ There are many answers for this question. One way is running `df -T`
 
   * /var/log/messages
   * /var/log/boot.log</summary><br><b>
+
+| Log File | Content | Equivalent (systemd) |
+|----------|---------|---------------------|
+| `/var/log/messages` | General system messages — kernel messages, service startup/shutdown, hardware events, application logs. The catch-all log on non-systemd systems. | `journalctl` |
+| `/var/log/boot.log` | Messages generated during system boot — daemon startup, filesystem checks, network initialization, service init scripts output. | `journalctl -b` |
+
+💡 On modern systemd-based distros, `/var/log/messages` is often empty or doesn't exist — `journalctl` replaces it. The `rsyslog` daemon writes these files if installed alongside systemd.
+
+🔧 **CLI to view:**
+```bash
+tail -f /var/log/messages          # Follow in real time
+grep -i error /var/log/messages     # Search for errors
+grep FAILED /var/log/boot.log       # Find failed boot services
+
+# systemd equivalent
+journalctl -b                       # All logs since this boot
+journalctl -p err -b                # Errors only
+```
+
+📖 **Docs:** `man rsyslogd` / `man journalctl`
 </b></details>
 
 <details>
@@ -1088,15 +1467,64 @@ sar -n TCP,ETCP 1
 <details>
 <summary>how to list all the processes running in your system?</summary><br><b>
 
-The "ps" command can be used to list all the processes running in a system. The "ps aux" command provides a detailed list of all the processes, including the ones running in the background.
+```bash
+# Full process listing (BSD style)
+ps aux                    # a=all users, u=user format, x=including no TTY
+
+# Full process listing (Unix style)
+ps -ef
+
+# Tree view — show parent/child hierarchy
+ps -eo pid,ppid,comm --forest
+pstree -p
+
+# Specific columns for analysis
+ps -eo pid,ppid,user,%mem,%cpu,comm --sort=-%mem | head -20
+
+# Live monitoring (interactive)
+top
+htop                     # needs install, prettier
+
+# List only processes using a specific port
+ss -tlnp
+lsof -i :80
+```
+
+💡 `ps aux` is BSD syntax (no dash), and `ps -ef` is Unix syntax (with dash). Both are widely used.
+
+📖 **Docs:** `man ps` / `man top` / `man pstree`
 </b></details>
 
 <details>
 <summary>How to run a process in the background and why to do that in the first place?</summary><br><b>
 
-You can achieve that by specifying & at the end of the command.
-As to why, since some commands/processes can take a lot of time to finish
-execution or run forever, you may want to run them in the background instead of waiting for them to finish before gaining control again in current session.
+```bash
+# Start a process in the background
+./long_running_script.sh &
+
+# Suspend a running process and resume in background
+# Press Ctrl+Z (suspends), then:
+bg                       # Resume in background
+
+# List background jobs
+jobs -l
+
+# Bring a background job to foreground
+fg %1                    # %1 = job number from jobs output
+
+# Run immune to hangups (survives terminal close)
+nohup ./script.sh &
+```
+
+**Why run in background?**
+* Long-running tasks (builds, data processing, backups) without blocking your terminal
+* Servers/daemons that run indefinitely
+* Run multiple parallel tasks from one terminal
+* Tasks that should survive terminal disconnection — use `nohup`, `screen`, or `tmux`
+
+💡 For production services, use systemd units instead of background processes in a shell.
+
+📖 **Docs:** `man bash` (JOB CONTROL section) / `man jobs`
 </b></details>
 
 <details>
@@ -1122,11 +1550,28 @@ state configuration.
 <details>
 <summary>What signals are you familiar with?</summary><br><b>
 
-SIGTERM - default signal for terminating a process
-SIGHUP - common usage is for reloading configuration
-SIGKILL - a signal which cannot caught or ignored
+| Signal | Number | Purpose |
+|--------|--------|---------|
+| **SIGTERM** | 15 | Default for `kill` — polite termination request, process can handle/clean up |
+| **SIGKILL** | 9 | Force kill — kernel terminates process immediately, cannot be caught/ignored |
+| **SIGINT** | 2 | Interrupt from keyboard (Ctrl+C) |
+| **SIGHUP** | 1 | Hangup — commonly used to reload configuration (daemons re-read config files) |
+| **SIGSTOP** | 19 | Pause a process — cannot be caught/ignored |
+| **SIGCONT** | 18 | Resume a stopped process |
+| **SIGUSR1** | 10 | User-defined signal — application-specific meaning |
+| **SIGUSR2** | 12 | User-defined signal |
+| **SIGCHLD** | 17 | Sent to parent when a child process terminates/stops |
 
-To view all available signals run `kill -l`
+💡 **SIGTERM vs SIGKILL:** Always try SIGTERM first (gives the process a chance to save state and exit gracefully). Use SIGKILL only as a last resort — it leaves no opportunity for cleanup (open files, temp data, DB connections).
+
+```bash
+kill -l                # List all signals
+kill -15 1234          # SIGTERM
+kill -9 1234           # SIGKILL (force)
+kill -HUP 1234         # SIGHUP (reload config)
+```
+
+📖 **Docs:** `man 7 signal` / `man kill`
 </b></details>
 
 <details>
@@ -1158,20 +1603,67 @@ When you press "Ctrl+C," it sends the SIGINT signal to the foreground process, a
 <details>
 <summary>What is a Daemon in Linux?</summary><br><b>
 
-A background process. Most of these processes are waiting for requests or set of conditions to be met before actually running anything.
-Some examples: sshd, crond, rpcbind.
+A **daemon** is a background process that runs continuously, usually started at boot and running until shutdown. Daemons typically:
+* Detach from the controlling terminal
+* Have no interactive user interface
+* Listen for requests or wait for conditions (e.g., timers, socket connections)
+* Often end with 'd' by convention (sshd, crond, httpd, systemd-journald)
+
+**Notable daemons:**
+| Daemon | Purpose |
+|--------|---------|
+| `sshd` | SSH server |
+| `crond` | Scheduled job runner |
+| `systemd` | Init system (PID 1) |
+| `rsyslogd` / `systemd-journald` | System logging |
+| `dockerd` | Docker engine |
+| `nginx` / `httpd` | Web server (worker processes) |
+
+🔧 **CLI:**
+```bash
+# List all running daemons/services
+systemctl list-units --type=service --state=running
+
+# Check if a daemon is enabled at boot
+systemctl is-enabled sshd
+
+# Check daemon logs
+journalctl -u sshd -f
+```
+
+📖 **Docs:** `man daemon` / `man systemd.service`
 </b></details>
 
 <details>
 <summary>What are the possible states of a process in Linux?</summary><br><b>
-<pre>
-Running (R)
-Uninterruptible Sleep (D) - The process is waiting for I/O
-Interruptible Sleep (S)
-Stopped (T)
-Dead (x)
-Zombie (z)
-</pre>
+
+| State | Code | Description |
+|-------|------|-------------|
+| **Running** | R | Currently being executed or in run queue |
+| **Interruptible Sleep** | S | Waiting for an event (signal, I/O completion, etc.) |
+| **Uninterruptible Sleep** | D | Waiting for I/O — cannot be interrupted even by signals |
+| **Stopped** | T | Paused by SIGSTOP or debugger |
+| **Zombie** | Z | Terminated but not yet reaped by parent |
+| **Dead** | X | Process has been reaped and removed from process table |
+
+🔧 **CLI to check process states:**
+```bash
+# Show PID + State + Command for all processes
+ps -eo pid,stat,comm
+
+# Count processes in each state
+ps -eo stat | sort | uniq -c | sort -rn
+
+# Find processes in D state (uninterruptible sleep - I/O wait)
+ps -eo pid,stat,comm | awk '$2 ~ /D/'
+
+# Check zombie count
+top -b -n1 | grep -c zombie
+```
+
+💡 A high number of **D-state** processes often indicates storage/network I/O problems.
+
+📖 **Docs:** `man ps` / `man 7 signal`
 </b></details>
 
 <details>
@@ -1205,16 +1697,92 @@ You can also try closing/terminating the parent process. This will make the zomb
   * Zombie Processes
 </summary><br><b>
 
-If you mention at any point ps command with arguments, be familiar with what these arguments does exactly.
+```bash
+# Processes owned by a specific user
+ps -u username
+ps -U username -o pid,comm,%mem,%cpu
+pgrep -u username -l
+
+# Java processes
+ps aux | grep java
+pgrep -f java -l
+jps -l                     # Java-specific tool (part of JDK)
+
+# Zombie processes
+ps aux | grep -w Z
+ps -eo pid,stat,comm | grep -w Z
+top -b -n1 | grep zombie
+
+# Fancy: find all zombie children of a parent
+ps -eo ppid,pid,stat,comm | awk '$3 ~ /Z/ {print $1, $2, $4}'
+```
+
+💡 `pgrep` is often more efficient than `ps | grep` because it uses /proc directly.
+
+📖 **Docs:** `man ps` / `man pgrep` / `man top`
 </b></details>
 
 <details>
 <summary>What is the init process?</summary><br><b>
-It is the first process executed by the kernel during the booting of a system. It is a daemon process which runs till the system is shutdown. That is why, it is the parent of all the processes
+
+The **init process** is PID 1 — the very first process the kernel starts during boot. It is the ultimate ancestor of all other processes.
+
+**Responsibilities:**
+* Spawns all other processes (directly or indirectly)
+* Adopts orphan processes — if a parent dies before its child, init becomes the new parent
+* Reaps zombie processes — init periodically calls `wait()` to clean up
+* Manages system startup (bringing up services) and shutdown
+
+**Modern implementations:**
+| Init System | Examples |
+|-------------|----------|
+| `systemd` | RHEL, Debian, Ubuntu, SUSE, Fedora (most common today) |
+| `SysV init` | Traditional `/etc/init.d/` scripts + `/etc/inittab` |
+| `OpenRC` | Gentoo, Alpine |
+| `runit` | Void Linux, used inside some containers |
+
+```bash
+# Check which init system
+ps -p 1 -o comm=
+stat /sbin/init
+```
+
+📖 **Docs:** https://www.freedesktop.org/wiki/Software/systemd/
 </b></details>
 
 <details>
 <summary>Can you describe how processes are being created?</summary><br><b>
+
+Process creation in Linux follows a **fork-then-exec** pattern:
+
+1. **fork()** — A parent process calls `fork()`, creating a nearly identical child process (same memory, file descriptors, etc.) with a new PID. The child gets a return value of 0, the parent gets the child's PID.
+
+2. **exec()** — The child calls an `exec*()` variant (`execl`, `execve`, etc.) to replace its memory image with a new program. The PID stays the same, but the code/data/stack is replaced by the new executable.
+
+3. **wait()** — The parent calls `wait()` or `waitpid()` to collect the child's exit status. Until the parent calls wait, a terminated child becomes a **zombie** (finished but still in the process table).
+
+```
+Parent                  Child (same image)      Child (new program)
+  |                         |                       |
+  |--- fork() ------------>|                       |
+  |                   PID=12345                    |
+  |                         |--- exec("/bin/ls") -->|
+  |                         |                   PID=12345
+  |--- wait() ------------------------------------>|
+  |                    <--- exit status ------------|
+```
+
+🔧 **CLI to observe:**
+```bash
+# Use strace to watch fork/exec system calls
+strace -e trace=fork,execve,wait4 -f bash -c 'ls -la'
+
+# See the process tree
+pstree -p
+ps -eo pid,ppid,comm --forest
+```
+
+📖 **Docs:** `man 2 fork` / `man 2 execve` / `man 2 wait`
 </b></details>
 
 <details>
@@ -1273,10 +1841,66 @@ This is a great article on the topic: https://www.computerhope.com/jargon/f/file
 
 <details>
 <summary>What is NTP? What is it used for?</summary><br><b>
+
+**NTP (Network Time Protocol)** synchronizes system clocks across a network. Accurate time is critical for:
+* Distributed systems (database replication, consensus algorithms)
+* Security (TLS certificate validity, Kerberos tickets, TOTP)
+* Log correlation across servers (investigating incidents)
+* Cron jobs and scheduled tasks running at the correct time
+
+NTP typically keeps clocks within milliseconds of UTC by communicating with stratum servers (hierarchical time sources).
+
+🔧 **CLI:**
+```bash
+# Check time sync status
+timedatectl
+chronyc tracking               # if using chrony (modern)
+ntpq -p                        # if using ntpd (traditional)
+
+# Force immediate sync
+sudo chronyc makestep
+
+# Check time configuration
+cat /etc/chrony.conf           # or /etc/ntp.conf
+```
+
+💡 Modern Linux distros use **chrony** (faster sync, handles network interruptions better) instead of the older `ntpd`.
+
+📖 **Docs:** `man chronyd` / https://chrony-project.org/
 </b></details>
 
 <details>
 <summary>Explain Kernel OOM</summary><br><b>
+
+**OOM (Out-Of-Memory) Killer** is the kernel's last resort when memory is exhausted. When the system runs out of RAM + swap, the OOM killer selects and kills one or more processes to free memory and keep the system alive.
+
+**How it works:**
+1. Memory pressure reaches critical levels (no free pages)
+2. OOM killer calculates an **oom_score** for each process — based on memory usage, CPU time, process age, etc.
+3. The process with the highest `oom_score` (i.e., the "worst" offender) is killed with SIGKILL
+4. Kernel logs the event to `dmesg` / journald
+
+🔧 **CLI:**
+```bash
+# Check OOM scores for processes
+cat /proc/$(pidof mysqld)/oom_score
+cat /proc/$(pidof mysqld)/oom_score_adj    # adjustment factor
+
+# Protect a critical process from OOM killer (score_adj = -1000)
+echo -1000 | sudo tee /proc/$(pidof sshd)/oom_score_adj
+
+# Make a process more likely to be killed (score_adj = 1000)
+echo 1000 | sudo tee /proc/$(pidof some_memory_hog)/oom_score_adj
+
+# Check if OOM killer has run
+dmesg | grep -i "killed process"
+journalctl -k | grep -i oom
+
+# Trigger OOM manually (for testing, DO NOT do on production!)
+echo f | sudo tee /proc/sysrq-trigger   # invokes OOM killer
+```
+
+📖 **Docs:** https://www.kernel.org/doc/html/latest/admin-guide/mm/oom-kill.html
 </b></details>
 
 <a name="questions-linux-security"></a>
@@ -1284,26 +1908,181 @@ This is a great article on the topic: https://www.computerhope.com/jargon/f/file
 
 <details>
 <summary>What is chroot? In what scenarios would you consider using it?</summary><br><b>
+
+**chroot** (change root) changes the apparent root directory for a process and its children. The process sees the new directory as `/` and cannot access files outside it.
+
+**Use cases:**
+* **Isolating build environments** — Package builders compile in a chroot to ensure clean dependencies
+* **System recovery** — Boot from a live ISO, chroot into the installed system to repair bootloader/configs
+* **Containers (historically)** — Early container-like isolation before namespaces/cgroups
+* **Testing** — Run untrusted software in a limited jail
+
+⚠️ **chroot is NOT a security boundary.** A root process inside a chroot can escape (e.g., via `mknod`, `mount`, or chroot-again technique). Use namespaces or containers for real isolation.
+
+🔧 **CLI:**
+```bash
+# Basic chroot
+sudo chroot /mnt/rescue /bin/bash
+
+# Create a minimal chroot environment
+mkdir -p /chroots/debian
+debootstrap stable /chroots/debian
+sudo chroot /chroots/debian /bin/bash
+```
+
+📖 **Docs:** `man 2 chroot` / `man 8 chroot`
 </b></details>
 
 <details>
 <summary>What is SELiunx?</summary><br><b>
+
+**SELinux (Security-Enhanced Linux)** is a Mandatory Access Control (MAC) system built into the Linux kernel. It enforces security policies that restrict what processes and users can do — even root is constrained.
+
+**How it works:**
+* Every process, file, directory, and port has a **context label**
+* Policies define which contexts can interact
+* A security policy (enforced by the kernel) blocks anything not explicitly allowed
+
+**Modes:**
+* **Enforcing** — Policy violations are blocked AND logged
+* **Permissive** — Policy violations are logged but NOT blocked (useful for debugging)
+* **Disabled** — SELinux is off
+
+🔧 **CLI:**
+```bash
+# Check current mode
+getenforce
+sestatus
+
+# Temporarily change mode
+sudo setenforce 0     # Permissive
+sudo setenforce 1     # Enforcing
+
+# Check audit log for SELinux denials
+sudo ausearch -m avc -ts recent
+
+# Restore default file contexts
+sudo restorecon -rv /var/www
+
+# Permanently set mode in /etc/selinux/config
+```
+
+📖 **Docs:** https://selinuxproject.org/ / https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/ (Using SELinux)
 </b></details>
 
 <details>
 <summary>What is Kerberos?</summary><br><b>
+
+**Kerberos** is a network authentication protocol that uses **tickets** instead of passwords for secure authentication over untrusted networks. It provides mutual authentication — both client and server verify each other.
+
+**Key components:**
+| Component | Role |
+|-----------|------|
+| **KDC** (Key Distribution Center) | The authentication server — issues tickets |
+| **TGT** (Ticket Granting Ticket) | An initial ticket obtained at login (valid for a session, e.g., 10h) |
+| **Service Ticket** | A ticket for a specific service (obtained by presenting a TGT) |
+| **Principal** | An identity — user or service (e.g., `user@REALM` or `HTTP/server.example.com@REALM`) |
+| **Realm** | A Kerberos administrative domain (typically uppercase domain, e.g., `EXAMPLE.COM`) |
+
+💡 Kerberos is widely used in enterprise environments (Active Directory uses Kerberos) and for Hadoop, NFSv4, and SSH authentication.
+
+📖 **Docs:** `man kerberos` / https://web.mit.edu/kerberos/
 </b></details>
 
 <details>
 <summary>What is nftables?</summary><br><b>
+
+**nftables** is the modern packet filtering framework that replaces `iptables`, `ip6tables`, `arptables`, and `ebtables`. It provides a unified interface for IPv4, IPv6, ARP, and bridge filtering.
+
+**Advantages over iptables:**
+* Single unified tool instead of four separate ones
+* Better performance — more efficient rule evaluation
+* Proper sets and maps (dictionaries) — no more linear chain scanning
+* Atomic rule updates — all rules applied at once
+* Human-readable syntax
+
+🔧 **CLI:**
+```bash
+# List all rules
+sudo nft list ruleset
+
+# Simple firewall: allow SSH, HTTP, HTTPS; drop the rest
+sudo nft add table inet filter
+sudo nft add chain inet filter input { type filter hook input priority 0 \; }
+sudo nft add rule inet filter input tcp dport { 22, 80, 443 } accept
+sudo nft add rule inet filter input drop
+
+# Save rules permanently
+sudo nft list ruleset > /etc/nftables.conf
+```
+
+📖 **Docs:** `man nft` / https://wiki.nftables.org/
 </b></details>
 
 <details>
 <summary>What firewalld daemon is responsible for?</summary><br><b>
+
+**firewalld** is a dynamic firewall manager that provides a higher-level interface to nftables/iptables. It uses **zones** and **services** to define trust levels and allowed ports.
+
+**Key concepts:**
+* **Zones** — Trust levels assigned to network interfaces (e.g., `public`, `internal`, `trusted`, `dmz`)
+* **Services** — Predefined port/protocol groups (e.g., `ssh`, `http`, `mysql`)
+* **Rich rules** — Custom granular rules when services aren't enough
+* **Runtime vs Permanent** — Changes are immediate (runtime) or persist after reboot (permanent)
+
+🔧 **CLI:**
+```bash
+# Check status
+sudo firewall-cmd --state
+sudo firewall-cmd --list-all
+
+# Get active zone
+sudo firewall-cmd --get-active-zones
+
+# Allow a service
+sudo firewall-cmd --add-service=http --permanent
+sudo firewall-cmd --reload
+
+# Allow a port range
+sudo firewall-cmd --add-port=8080-8090/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+📖 **Docs:** `man firewalld` / https://firewalld.org/
 </b></details>
 
 <details>
 <summary>Do you have experience with hardening servers? Can you describe the process?</summary><br><b>
+
+Server hardening is the process of reducing the attack surface by removing unnecessary software, tightening configurations, and applying security controls. Key steps:
+
+1. **Minimal installation** — Install only required packages; remove compilers, X11, unused services
+2. **SSH hardening** — Disable root login, use key-only auth, change default port, set `PermitRootLogin no`, `PasswordAuthentication no`
+3. **Firewall** — Allow only required ports; default-deny policy for inbound/outbound traffic
+4. **Automatic updates** — Enable `unattended-upgrades` for security patches; keep kernel updated
+5. **File integrity monitoring** — Deploy AIDE or Tripwire to detect unauthorized changes
+6. **Audit logging** — Configure auditd to track sensitive file access, privilege escalation, and user activity
+7. **Mandatory Access Control** — Enable SELinux (enforcing) or AppArmor
+8. **Kernel hardening** — Set sysctl parameters: `kernel.kptr_restrict=2`, `net.ipv4.tcp_syncookies=1`, `kernel.dmesg_restrict=1`
+9. **Password policies** — Enforce complexity, rotation, and account lockout via PAM modules
+10. **Remove unnecessary cron jobs, SUID/SGID binaries** — `find / -perm -4000 -type f 2>/dev/null`
+
+🔧 **Quick hardening script (CIS-inspired):**
+```bash
+# Check for world-writable files
+find / -xdev -type f -perm -o+w 2>/dev/null
+
+# Check for files with no owner/group
+find / -nouser -o -nogroup 2>/dev/null
+
+# List open ports
+ss -tlnp
+
+# Audit running services
+systemctl list-units --type=service --state=running
+```
+
+📖 **Docs:** https://www.cisecurity.org/benchmark/ (CIS Benchmarks) / `man sysctl.d`
 </b></details>
 
 <details>
@@ -1357,10 +2136,53 @@ The loopback interface is a special, virtual network interface that your compute
   * ping
   * netstat
   * traceroute</summary><br><b>
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `ip addr` | Show/manage IP addresses on interfaces | `ip addr add 192.168.1.10/24 dev eth0` |
+| `ip route` | Show/manage the routing table | `ip route add default via 192.168.1.1` |
+| `ip link` | Show/manage network interfaces (link layer) | `ip link set eth0 up` |
+| `ping` | Test connectivity via ICMP echo | `ping -c 4 8.8.8.8` |
+| `netstat` | Show network connections, routing, interface stats (deprecated) | `netstat -tlnp` |
+| `traceroute` | Trace the path packets take to a destination | `traceroute google.com` |
+
+💡 `ip` (from iproute2) is the modern replacement for `ifconfig`, `route`, and `arp`. `ss` replaces `netstat`.
+
+📖 **Docs:** `man ip` / `man ss` / `man traceroute`
 </b></details>
 
 <details>
 <summary>What is a network namespace? What is it used for?</summary><br><b>
+
+A **network namespace** is an isolated network stack — it has its own interfaces, routing table, iptables rules, and sockets. Processes in different network namespaces cannot see each other's network resources.
+
+**Use cases:**
+* **Containers** — Docker, Podman, and Kubernetes use network namespaces to give each container isolated networking
+* **Testing** — Simulate complex network topologies on a single machine
+* **VPNs** — Route specific applications through a VPN while others use the default network
+
+🔧 **CLI:**
+```bash
+# Create a new network namespace
+sudo ip netns add testns
+
+# Run a command inside the namespace
+sudo ip netns exec testns bash
+ip link              # Only loopback, no access to host interfaces
+
+# Create a veth pair to connect namespaces
+sudo ip link add veth0 type veth peer name veth1
+sudo ip link set veth1 netns testns
+sudo ip addr add 10.0.0.1/24 dev veth0
+sudo ip netns exec testns ip addr add 10.0.0.2/24 dev veth1
+sudo ip link set veth0 up
+sudo ip netns exec testns ip link set veth1 up
+
+# List all network namespaces
+sudo ip netns list
+```
+
+📖 **Docs:** `man ip-netns` / https://www.kernel.org/doc/html/latest/admin-guide/namespace.html
 </b></details>
 
 <details>
@@ -1376,10 +2198,56 @@ lsof -i -n -P | grep <port_number>
 
 <details>
 <summary>How can you turn your Linux server into a router?</summary><br><b>
+
+A Linux system can route packets between networks by enabling IP forwarding.
+
+🔧 **CLI:**
+```bash
+# Enable IP forwarding (temporary)
+sudo sysctl -w net.ipv4.ip_forward=1
+
+# Make it permanent
+echo 'net.ipv4.ip_forward=1' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+# Enable NAT/masquerading (so hosts behind this router can reach the internet)
+sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+# Save iptables rules
+sudo iptables-save > /etc/iptables/rules.v4
+
+# Verify forwarding is enabled
+cat /proc/sys/net/ipv4/ip_forward   # 1 = enabled
+```
+
+💡 Also ensure the clients use this machine as their default gateway and that the firewall allows forwarding.
+
+📖 **Docs:** https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html
 </b></details>
 
 <details>
 <summary>What is a virtual IP? In what situation would you use it?</summary><br><b>
+
+A **Virtual IP (VIP)** is an IP address not tied to a specific physical interface. It's shared across multiple hosts for high availability — only the active node holds the VIP at any given time.
+
+**Use cases:**
+* **HA failover** — keepalived/VRRP: if the primary server goes down, the backup takes over the VIP
+* **Load balancer frontend** — Multiple HAProxy instances share a VIP, clients connect to the VIP not individual IPs
+* **Database clustering** — PostgreSQL/MySQL VIP for the primary writer node
+
+🔧 **CLI — Add and remove a VIP:**
+```bash
+# Add a virtual IP to eth0
+sudo ip addr add 192.168.1.100/24 dev eth0 label eth0:vip
+
+# Remove it
+sudo ip addr del 192.168.1.100/24 dev eth0
+
+# Keepalived manages VIP automatically for HA setups
+sudo apt install keepalived
+```
+
+📖 **Docs:** `man ip-address` / https://www.keepalived.org/
 </b></details>
 
 <details>
@@ -1397,18 +2265,82 @@ Technically, yes.
 <details>
 <summary>What is telnet and why is it a bad idea to use it in production? (or at all)</summary><br><b>
 
-Telnet is a type of client-server protocol that can be used to open a command line on a remote computer, typically a server.
-By default, all the data sent and received via telnet is transmitted in clear/plain text, therefore it should not be used as it does not encrypt any data between the client and the server.
+**Telnet** is a client-server protocol (port 23) for remote terminal access. It was widely used before SSH existed.
+
+**Why it should NEVER be used in production:**
+1. **No encryption** — Everything (including passwords) is sent in plain text, trivially intercepted
+2. **No authentication of the server** — Cannot verify you're connecting to the right host (MITM attack)
+3. **No integrity checking** — Data can be modified in transit without detection
+
+💡 **Use SSH instead** for any remote command-line access. The only legitimate use of `telnet` today is manual testing of TCP services:
+```bash
+# Test if a port is open (manual netcat alternative)
+telnet example.com 80
+telnet 192.168.1.10 3306
+```
+
+Better alternatives: `nc` (netcat), `curl`, or `nmap` for port testing.
+
+📖 **Docs:** `man telnet` / `man ssh`
 </b></details>
 
 <details>
 <summary>What is the routing table? How do you view it?</summary><br><b>
+
+The **routing table** is a kernel data structure that determines where to send network packets based on their destination IP. It contains rules (routes) that map destination networks to interfaces and next-hop gateways.
+
+Each route entry includes: **Destination**, **Gateway** (next hop), **Genmask** (subnet mask), **Interface**, and **Metric** (priority).
+
+🔧 **CLI:**
+```bash
+# View routing table (modern)
+ip route show
+ip -6 route show               # IPv6 routes
+
+# View routing table (legacy)
+route -n
+netstat -rn
+
+# Add a static route
+sudo ip route add 10.0.0.0/8 via 192.168.1.1 dev eth0
+
+# Add default gateway
+sudo ip route add default via 192.168.1.1
+
+# Delete a route
+sudo ip route del 10.0.0.0/8
+
+# Trace which route will be used for a destination
+ip route get 8.8.8.8
+```
+
+💡 The kernel uses **longest prefix match** to select routes — more specific routes take priority over default routes.
+
+📖 **Docs:** `man ip-route` / `man route`
 </b></details>
 
 <details>
 <summary>How can you send an HTTP request from your shell?</summary><br><b>
-<br>
-Using nc is one way<br>
+
+```bash
+# curl (most common, feature-rich)
+curl -v https://example.com
+curl -X POST -H "Content-Type: application/json" -d '{"key":"value"}' https://api.example.com
+
+# wget (great for downloads, recursive fetching)
+wget https://example.com/file.tar.gz
+
+# httpie (human-friendly, colored output)
+http GET https://example.com
+
+# netcat (raw HTTP, useful for debugging)
+printf "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n" | nc example.com 80
+
+# In PowerShell (cross-platform)
+Invoke-WebRequest -Uri https://example.com
+```
+
+📖 **Docs:** `man curl` / `man wget`
 </b></details>
 
 <details>
@@ -1418,6 +2350,28 @@ It is a network utility that analyses and may inject tasks into the data-stream 
 
 <details>
 <summary>How to list active connections?</summary><br><b>
+
+```bash
+# Modern tool (recommended): show sockets
+ss -tunap                  # TCP + UDP, numeric, all, process info
+ss -s                      # Summary statistics
+ss -tn state established   # Active TCP connections only
+ss -tnlp                   # Listening TCP sockets with process names
+
+# Legacy tool
+netstat -tunap
+
+# Live monitoring
+watch -n 1 'ss -tn state established'
+
+# Count connections per state
+ss -tan | awk '{print $1}' | sort | uniq -c
+
+# Show connections for a specific port
+ss -tnp 'sport = :443 or dport = :443'
+```
+
+📖 **Docs:** `man ss` / https://www.kernel.org/doc/html/latest/networking/
 </b></details>
 
 <details>
@@ -1428,6 +2382,31 @@ One way would be `ping6 ff02::1`
 
 <details>
 <summary>What is network interface bonding and do you know how it's performed in Linux?</summary><br><b>
+
+**Network bonding** (link aggregation) combines multiple physical NICs into a single logical interface for **increased bandwidth** and/or **redundancy/failover**.
+
+The Linux bonding driver supports 7 modes. Most common:
+* **active-backup (mode 1)** — One interface active, others standby; failover on link failure
+* **balance-rr (mode 0)** — Round-robin packet distribution across all links
+* **802.3ad / LACP (mode 4)** — Dynamic link aggregation (requires switch support)
+
+🔧 **CLI — create a bond:**
+```bash
+# Load the bonding kernel module
+sudo modprobe bonding
+
+# Create bond0 with active-backup mode
+sudo ip link add bond0 type bond mode active-backup
+sudo ip link set eth0 master bond0
+sudo ip link set eth1 master bond0
+sudo ip addr add 10.0.0.10/24 dev bond0
+sudo ip link set bond0 up
+
+# Check bond status
+cat /proc/net/bonding/bond0
+```
+
+📖 **Docs:** https://www.kernel.org/doc/html/latest/networking/bonding.html
 </b></details>
 
 <details>
@@ -1443,6 +2422,34 @@ There a couple of modes:
 
 <details>
 <summary>What is a bridge? How it's added in Linux OS?</summary><br><b>
+
+A **network bridge** is a software switch that connects multiple network interfaces at Layer 2 (Ethernet). It forwards frames based on MAC addresses, just like a physical switch.
+
+**Use cases:**
+* **VMs/containers** — Connect virtual machine NICs (tap interfaces) to the host network
+* **Docker** — The `docker0` bridge connects containers to each other and the host
+* **Network testing** — Simulate complex network topologies
+
+🔧 **CLI:**
+```bash
+# Create a bridge
+sudo ip link add name br0 type bridge
+sudo ip link set br0 up
+
+# Add interfaces to the bridge
+sudo ip link set eth0 master br0
+sudo ip link set tap0 master br0
+sudo ip addr add 192.168.1.10/24 dev br0
+
+# Show bridge info and MAC forwarding table
+bridge link show
+bridge fdb show br br0
+
+# Legacy: inspect with brctl
+brctl show
+```
+
+📖 **Docs:** `man bridge` / https://www.kernel.org/doc/html/latest/networking/bridge.html
 </b></details>
 
 <a name="questions-linux-dns"></a>
