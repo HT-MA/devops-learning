@@ -62,11 +62,48 @@ const CATEGORY_NAMES = {
 };
 
 function parseDetailsBlocks(content) {
-  const questions = [];
+  const lines = content.split("\n");
   const regex =
     /<details>\s*<summary>([\s\S]*?)<\/summary>(?:<br>)?(?:<b>)?([\s\S]*?)(?:<\/b>)?<\/details>/gi;
+
+  // Find the start of the questions section
+  let questionsStartLine = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^##\s+.*uestions/i.test(lines[i])) {
+      questionsStartLine = i;
+      break;
+    }
+  }
+
+  // Collect ### sections from the questions section onwards
+  const sectionPositions = [];
+  for (let i = questionsStartLine; i < lines.length; i++) {
+    const h3Match = lines[i].match(/^###\s+(.+)/);
+    if (h3Match) {
+      const title = h3Match[1].trim();
+      const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
+      sectionPositions.push({ id, title, lineIndex: i });
+    }
+  }
+
+  // Second pass: match <details> blocks and assign sections
+  const questions = [];
+  const sectionCounts = {};
+
   let match;
   while ((match = regex.exec(content)) !== null) {
+    const beforeMatch = content.substring(0, match.index);
+    const lineIndex = beforeMatch.split("\n").length - 1;
+
+    // Find the last ### heading before this match
+    let sectionId = null;
+    for (let i = sectionPositions.length - 1; i >= 0; i--) {
+      if (sectionPositions[i].lineIndex <= lineIndex) {
+        sectionId = sectionPositions[i].id;
+        break;
+      }
+    }
+
     const question = match[1]
       .replace(/<[^>]+>/g, "")
       .replace(/\n+/g, " ")
@@ -76,10 +113,21 @@ function parseDetailsBlocks(content) {
       .replace(/\n+/g, "\n")
       .trim();
     if (question && answer) {
-      questions.push({ question, answer });
+      const q = { question, answer };
+      if (sectionId) {
+        q.section = sectionId;
+        sectionCounts[sectionId] = (sectionCounts[sectionId] || 0) + 1;
+      }
+      questions.push(q);
     }
   }
-  return questions;
+
+  const sections = sectionPositions.map((s) => ({
+    id: s.id,
+    title: s.title,
+    questionCount: sectionCounts[s.id] || 0,
+  }));
+  return { questions, sections };
 }
 
 function parseExerciseTable(content) {
@@ -123,7 +171,7 @@ function buildTopicsData() {
       color: "#95A5A6",
     };
 
-    const questions = parseDetailsBlocks(content);
+    const { questions, sections } = parseDetailsBlocks(content);
     const exercises = getTopicExercises(
       path.join(TOPICS_DIR, dirName),
       content
@@ -135,6 +183,7 @@ function buildTopicsData() {
       category: meta.category,
       categoryName: CATEGORY_NAMES[meta.category] || meta.category,
       color: meta.color,
+      sections,
       questionCount: questions.length,
       exerciseCount: exercises.length,
       totalItems: questions.length + exercises.length,
